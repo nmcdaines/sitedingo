@@ -144,7 +144,7 @@ export default function ProjectPage() {
   }, []);
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-background z-50">
+    <div className="h-screen w-screen flex flex-col bg-background overflow-hidden">
       {/* Header */}
       <ProjectHeader
         project={mockProjectData}
@@ -153,7 +153,7 @@ export default function ProjectPage() {
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex relative overflow-hidden min-h-0">
+      <div className="flex-1 flex relative overflow-hidden">
         {/* Left Toolbar */}
         <Toolbar activeTool={activeTool} onToolChange={setActiveTool} />
 

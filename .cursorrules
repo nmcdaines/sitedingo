@@ -1,0 +1,64 @@
+# Cursor Rules for sitedingo
+
+## Project Context
+
+sitedingo is an AI-powered sitemap and page structure builder (similar to relume.io). Users describe their business and get generated sitemaps and page content.
+
+## Tech Stack
+
+- Next.js 16 (App Router)
+- React 19
+- Tailwind CSS 4
+- Vercel AI SDK (`ai` package)
+- Drizzle ORM + PostgreSQL
+- Elysia API
+- Clerk auth
+- Zod 4
+
+## Code Style
+
+### Naming
+
+- Files and folders: `kebab-case`
+- Components: `PascalCase`
+- Functions/variables: `camelCase`
+- Types/interfaces: `PascalCase`
+
+### Imports
+
+```typescript
+// Use path aliases
+import { Button } from "@/components/ui/button";
+import { db } from "@/db";
+```
+
+### Components
+
+- Use shadcn/ui components from `@/components/ui/`
+- Follow shadcn patterns for new components
+- Prefer composition over configuration
+
+
+## Database
+
+- Schema in `src/db/schema.ts`
+- Relations in `src/db/relations.ts`
+- Use Drizzle's type-safe queries
+  - Use the beta version of alternation-engine (that is v2 of the queries)
+- Migrations via `drizzle-kit`
+
+## Key Directories
+
+```
+src/
+├── app/              # Next.js pages
+├── components/ui/    # shadcn components
+├── db/               # Database layer
+├── server/
+│   ├── api/         # Elysia API handlers
+│   └── prompts/     # AI prompt definitions
+```
+
+## Documentation
+
+TBD

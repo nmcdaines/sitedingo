@@ -1,36 +1,200 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# sitedingo
+
+An AI-powered sitemap and page structure builder that helps you design and visualize complete website architectures.
+
+## Features
+
+### 🎨 Sitemap Visualization
+- **Interactive Tree View**: Visualize your website structure in a hierarchical layout similar to Relume
+- **Expandable Sections**: View detailed sections within each page
+- **Real-time Updates**: Changes sync across your team
+- **Export Options**: Download your sitemap in multiple formats
+
+### 🤖 AI-Powered Generation
+- **Smart Sitemap Generation**: Describe your business and get a complete sitemap
+- **Context-Aware**: AI understands different business types and industries
+- **Section Recommendations**: Automatically suggests relevant page sections
+- **Iterative Refinement**: Regenerate and refine until it's perfect
+
+### 🛠️ Workspace Management
+- **Team Collaboration**: Invite team members and work together
+- **Multiple Projects**: Manage multiple websites in one place
+- **Version History**: Track changes and revert when needed
+- **Templates**: Start from pre-built templates
+
+## Tech Stack
+
+- **Frontend**: Next.js 16, React 19, Tailwind CSS 4
+- **Backend**: Elysia (API), Drizzle ORM
+- **Database**: PostgreSQL (Neon)
+- **AI**: Vercel AI SDK with OpenAI
+- **Auth**: Clerk
+- **Deployment**: Vercel
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ or Bun
+- PostgreSQL database (or use Neon)
+- OpenAI API key
+- Clerk account (for authentication)
+
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/yourusername/sitedingo.git
+cd sitedingo
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+# or
+bun install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up environment variables:
+```bash
+cp .env.example .env.local
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Add your credentials:
+```env
+DATABASE_URL=postgresql://...
+OPENAI_API_KEY=sk-...
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_...
+CLERK_SECRET_KEY=sk_...
+```
 
-## Learn More
+4. Run database migrations:
+```bash
+npm run db:push
+```
 
-To learn more about Next.js, take a look at the following resources:
+5. Start the development server:
+```bash
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Visit [http://localhost:3000](http://localhost:3000) to see your app.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Project Structure
 
-## Deploy on Vercel
+```
+sitedingo/
+├── src/
+│   ├── app/                    # Next.js app router pages
+│   │   ├── page.tsx           # Home page
+│   │   ├── design/            # AI generation studio
+│   │   └── visualize/         # Sitemap visualization
+│   ├── components/
+│   │   ├── ui/                # shadcn/ui components
+│   │   └── visualization/     # Sitemap visualization components
+│   ├── db/                    # Database layer
+│   │   ├── schema.ts          # Drizzle schema
+│   │   └── relations.ts       # Table relations
+│   ├── lib/
+│   │   ├── utils.ts           # Utility functions
+│   │   └── queries/           # Database queries
+│   └── server/
+│       ├── api/               # Elysia API routes
+│       └── prompts/           # AI prompt templates
+├── docs/                      # Documentation
+├── public/                    # Static assets
+└── README.md
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Key Routes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `/` - Home page with feature overview
+- `/visualize` - Demo visualization with mock data
+- `/visualize/[projectId]` - Project-specific sitemap view
+- `/design` - AI-powered sitemap generation
+- `/api/*` - API endpoints (Elysia)
+
+## Database Schema
+
+```
+teams
+└── team_members
+└── projects
+    └── sitemaps
+        └── pages (tree structure)
+            └── sections
+```
+
+## Development
+
+### Adding New Components
+
+Use shadcn/ui CLI:
+```bash
+npm run add-component button
+# or
+bun run add-component button
+```
+
+### Database Migrations
+
+```bash
+# Generate migration
+npx drizzle-kit generate
+
+# Push to database
+npx drizzle-kit push
+
+# Open studio
+npx drizzle-kit studio
+```
+
+### Code Style
+
+- Files/folders: `kebab-case`
+- Components: `PascalCase`
+- Functions: `camelCase`
+- Follow ESLint rules
+- Use Prettier for formatting
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Roadmap
+
+- [x] Database schema design
+- [x] Sitemap visualization UI
+- [x] Database integration
+- [ ] AI sitemap generation
+- [ ] Drag & drop reordering
+- [ ] Real-time collaboration
+- [ ] Wireframe view
+- [ ] Style guide generator
+- [ ] Code export
+- [ ] Templates library
+- [ ] Version history
+- [ ] Comments & feedback
+
+## Documentation
+
+- [Visualization UI](./docs/visualization-ui.md) - Detailed documentation for the sitemap visualization
+- [Prompt Experiments](./docs/prompt-experiments.md) - AI prompt engineering notes
+
+## License
+
+MIT License - see LICENSE file for details
+
+## Support
+
+- Documentation: [docs/](./docs)
+- Issues: [GitHub Issues](https://github.com/yourusername/sitedingo/issues)
+- Email: support@sitedingo.com
+
+---
+
+Built with ❤️ using Next.js and AI

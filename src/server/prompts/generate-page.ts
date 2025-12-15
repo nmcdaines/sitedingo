@@ -1,6 +1,6 @@
 import { generateObject } from "ai";
 import z from 'zod'
-import { loadPromptWithVars } from './prompt-loader';
+import { loadPrompt } from './prompt-loader';
 
 const pageSchema = z.object({
   title: z.string(),
@@ -12,17 +12,19 @@ const pageSchema = z.object({
 })
 
 export async function generateAiPage(pageTitle: string, businessDescription: string) {
-  const prompt = await loadPromptWithVars('generate-page/prompt.md', {
-    pageTitle,
-    businessDescription,
-  });
+  const systemPrompt = await loadPrompt('generate-page/prompt.md');
+
+  const userPrompt = `
+Page Title: ${pageTitle}
+Business Description: ${businessDescription}
+  `.trim();
 
   const result = await generateObject({
-    model: prompt.metadata.model || 'google/gemini-2.5-pro',
-    system: prompt.content,
-    prompt: '', // All context is in the system prompt with variables
+    model: systemPrompt.metadata.model || 'google/gemini-2.5-pro',
+    system: systemPrompt.content,
+    prompt: userPrompt,
     schema: pageSchema,
-    maxOutputTokens: prompt.metadata.maxTokens || 4000,
+    maxOutputTokens: systemPrompt.metadata.maxTokens || 4000,
   });
 
   return result;

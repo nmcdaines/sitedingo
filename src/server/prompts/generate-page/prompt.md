@@ -19,12 +19,6 @@ Create detailed, relevant content sections that:
 4. Are well-structured and easy to scan
 5. Include appropriate calls-to-action where relevant
 
-## Page Details
-
-**Page Title:** {{pageTitle}}
-
-**Business Description:** {{businessDescription}}
-
 ## Guidelines
 
 - Generate 3-6 content sections per page

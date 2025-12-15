@@ -76,12 +76,13 @@ console.log(prompt.metadata.model); // 'google/gemini-2.5-flash'
 
 ### `loadPromptWithVars<T>(promptPath: string, variables: T): Promise<ParsedPrompt>`
 
-Loads a prompt and interpolates variables.
+Loads a prompt and interpolates variables. **Note:** This is useful for static configurations or meta-prompts, but for AI SDK usage, you should typically keep system prompts static and pass dynamic data via the user prompt.
 
 ```typescript
-const prompt = await loadPromptWithVars('welcome.md', {
-  userName: 'Alice',
-  businessType: 'cafe'
+// Example: Configuration-based prompts
+const prompt = await loadPromptWithVars('config-template.md', {
+  modelType: 'creative',
+  outputFormat: 'json'
 });
 ```
 
@@ -141,30 +142,55 @@ description: Generates creative marketing copy
 
 ## Variable Interpolation
 
-Use `{{variableName}}` syntax in your markdown prompts:
+The system supports `{{variableName}}` syntax for variable interpolation, but **this should primarily be used for meta-prompts or configuration**, not for dynamic user data in AI SDK calls.
+
+### ✅ Good Use Case: Configuration Templates
 
 ```markdown
 ---
-model: google/gemini-2.5-flash
+model: {{aiModel}}
 ---
 
-# Greeting Generator
+# {{taskType}} Generator
 
-Create a greeting for {{userName}} who works as a {{jobTitle}}.
-The greeting should be {{tone}} in tone.
+You are a {{role}} specializing in {{specialty}}.
 ```
 
-Then load with variables:
-
 ```typescript
-const prompt = await loadPromptWithVars('greeting.md', {
-  userName: 'Alice',
-  jobTitle: 'Software Engineer',
-  tone: 'professional'
+const prompt = await loadPromptWithVars('configurable-prompt.md', {
+  aiModel: 'google/gemini-2.5-pro',
+  taskType: 'Content',
+  role: 'copywriter',
+  specialty: 'technical documentation'
 });
 ```
 
-**Important:** If a variable is missing, an error will be thrown. This ensures type safety and prevents bugs.
+### ❌ Avoid: Dynamic User Data in System Prompts
+
+Instead of interpolating user data into system prompts:
+
+```typescript
+// ❌ Don't do this
+const prompt = await loadPromptWithVars('prompt.md', {
+  userName: 'Alice',  // Dynamic user data
+  userInput: request.body.text
+});
+```
+
+Do this instead:
+
+```typescript
+// ✅ Do this
+const systemPrompt = await loadPrompt('prompt.md');
+const userPrompt = `User: ${userName}\nRequest: ${userInput}`;
+
+await generateText({
+  system: systemPrompt.content,
+  prompt: userPrompt  // Dynamic data goes here
+});
+```
+
+**Why?** This maintains proper separation between the AI's role definition (system) and the user's request (prompt), which is how the AI SDK is designed to work.
 
 ## File Organization
 
@@ -195,43 +221,72 @@ Always include frontmatter with at least a description:
 
 ```markdown
 ---
+model: google/gemini-2.5-flash
 description: What this prompt does
 ---
 ```
 
-### 3. Document Variables
+### 3. Separate System and User Prompts
 
-In your prompt, clearly indicate what variables are needed:
+Keep your system prompts focused on role and instructions, pass dynamic data via the user prompt:
 
-```markdown
-## Required Variables
-- {{businessName}} - Name of the business
-- {{businessType}} - Type/industry of business
-- {{targetAudience}} - Primary target audience
+```typescript
+// ✅ Good: Static system prompt, dynamic user prompt
+const systemPrompt = await loadPrompt('generate-content.md');
+const userPrompt = `Topic: ${topic}\nAudience: ${audience}`;
+
+await generateText({
+  system: systemPrompt.content,
+  prompt: userPrompt
+});
+
+// ❌ Avoid: Interpolating user data into system prompt
+const prompt = await loadPromptWithVars('generate-content.md', {
+  topic, audience  // Don't do this for user data
+});
 ```
 
-### 4. Version Control Friendly
+### 4. Document Expected Input Format
+
+In your prompt, clearly describe what information you expect in the user prompt:
+
+```markdown
+## Expected Input
+
+The user prompt should provide:
+- **Topic**: The main subject to write about
+- **Target Audience**: Who the content is for
+- **Tone**: Desired tone (e.g., professional, casual, technical)
+```
+
+### 5. Version Control Friendly
 
 - Keep prompts in separate files for easier diffing
 - Use meaningful commit messages when changing prompts
 - Consider adding a changelog for major prompt changes
 
-### 5. Test Your Prompts
+### 6. Test Your Prompts
 
 ```typescript
 // Create a test file for your prompt
-import { loadPromptWithVars } from '@/server/prompts/prompt-loader';
+import { loadPrompt } from '@/server/prompts/prompt-loader';
 
 describe('User Profile Prompt', () => {
-  it('should load and interpolate variables', async () => {
-    const prompt = await loadPromptWithVars('user-profile/prompt.md', {
-      userName: 'Test User',
-      userRole: 'Developer',
-      industry: 'Technology'
-    });
+  it('should load prompt with correct metadata', async () => {
+    const prompt = await loadPrompt('user-profile/prompt.md');
     
-    expect(prompt.content).toContain('Test User');
+    expect(prompt.content).toBeTruthy();
     expect(prompt.metadata.model).toBe('google/gemini-2.5-pro');
+    expect(prompt.metadata.maxTokens).toBe(4000);
+  });
+
+  it('should generate valid profiles', async () => {
+    const systemPrompt = await loadPrompt('user-profile/prompt.md');
+    const userPrompt = 'Name: Test User\nRole: Developer\nIndustry: Technology';
+    
+    // Test with your AI SDK calls
+    // const result = await generateText({ system: systemPrompt.content, prompt: userPrompt });
+    // expect(result).toBeDefined();
   });
 });
 ```

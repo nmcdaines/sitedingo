@@ -9,25 +9,27 @@ description: Brief description of what this prompt does
 
 Brief overview of the prompt's purpose.
 
+## Your Role
+
+You are a [role description] specializing in [specialty].
+
 ## Context
 
-Provide context about the task and role.
-
-## Required Variables
-
-This prompt expects the following variables:
-- `{{variableName}}` - Description of what this variable represents
-- `{{anotherVariable}}` - Description of another variable
+When given [type of input], you should [expected behavior].
 
 ## Your Task
 
-Clear instructions for what the AI should do.
+Clear instructions for what the AI should do:
+1. Analyze the provided information
+2. Generate [output type]
+3. Ensure [quality criteria]
 
 ## Guidelines
 
-1. First guideline
-2. Second guideline
-3. Third guideline
+- First guideline about quality or format
+- Second guideline about tone or style
+- Third guideline about structure
+- Fourth guideline about constraints
 
 ## Output Format
 
@@ -36,3 +38,13 @@ Describe the expected output format or structure.
 ## Examples (Optional)
 
 Provide examples if helpful for clarifying the expected output.
+
+**Example Input:**
+```
+[Sample input data]
+```
+
+**Example Output:**
+```
+[Sample output]
+```

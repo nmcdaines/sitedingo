@@ -47,36 +47,69 @@ src/
 
 Each AI feature has its own directory with:
 
-- `index.ts` - Function that calls the AI model
-- `prompt.md` - System prompt in markdown (for complex prompts)
-- Inline prompts for simpler cases
+```
+prompts/
+├── feature-name/
+│   ├── index.ts      # Export function with typed input/output
+│   ├── schema.ts     # Zod schema + exported types
+│   └── prompt.md     # System prompt in markdown
+├── shared/           # Reusable prompt components
+│   ├── business-types.md
+│   └── output-rules.md
+└── models.ts         # Centralized model configuration
+```
+
+### Utilities (`src/lib/prompts.ts`)
+
+- `loadPrompt(path)` - Load markdown prompt file
+- `loadPromptWithVariables(path, vars)` - Load with `{{var}}` replacement
+- `formatUserPrompt(sections)` - Create consistent user prompts
+- `composePrompt(sections)` - Combine multiple prompt files
 
 ### Prompt Patterns
 
 1. **Structured Output**: Always use `generateObject()` with Zod schemas
-2. **Model Selection**: Use appropriate models for task complexity
-   - `gemini-2.5-flash` - Fast, simple tasks (sitemap generation)
-   - `gemini-2.5-pro` - Complex reasoning (page content)
-3. **Schema Documentation**: Use `.describe()` on Zod fields for better AI understanding
+2. **Model Selection**: Use `models.fast` or `models.capable` from `models.ts`
+3. **Schema Documentation**: Use `.describe()` on every Zod field
+4. **Typed Interfaces**: Export input/output types for each feature
+5. **Usage Tracking**: Return token usage stats from generation functions
 
 ### Example Prompt Structure
 
 ```typescript
 import { generateObject } from "ai";
-import z from "zod";
+import { loadPrompt, formatUserPrompt } from "@/lib/prompts";
+import { models, tokenLimits } from "../models";
+import { mySchema, type MyOutput } from "./schema";
 
-const schema = z.object({
-  field: z.string().describe("Clear description for the AI"),
-});
+const systemPrompt = loadPrompt("my-feature/prompt.md");
 
-export async function generateFeature(input: string) {
+export interface MyFeatureInput {
+  description: string;
+}
+
+export interface MyFeatureResult {
+  output: MyOutput;
+  usage: { promptTokens: number; completionTokens: number; totalTokens: number };
+}
+
+export async function generateMyFeature(input: MyFeatureInput): Promise<MyFeatureResult> {
+  const userPrompt = formatUserPrompt({
+    "Description": input.description,
+  });
+
   const result = await generateObject({
-    model: "google/gemini-2.5-flash",
+    model: models.fast,
     system: systemPrompt,
     prompt: userPrompt,
-    schema,
+    schema: mySchema,
+    maxOutputTokens: tokenLimits.sitemap,
   });
-  return result;
+
+  return {
+    output: result.object,
+    usage: { /* ... */ },
+  };
 }
 ```
 
@@ -104,19 +137,23 @@ export async function generateFeature(input: string) {
 
 ### DO
 
+- Use `loadPrompt()` utility to load markdown files
+- Use `formatUserPrompt()` for consistent user prompt formatting
 - Keep system prompts focused and specific to the task
-- Use markdown files for prompts > 20 lines
-- Add detailed `.describe()` annotations to Zod schemas
+- Add detailed `.describe()` annotations to every Zod field
+- Separate schemas into `schema.ts` files with exported types
 - Test with diverse business types (cafe, tradie, SaaS, nonprofit)
-- Consider the business domain when generating content
-- Use structured output over free-form text
+- Return usage stats from generation functions
+- Use `models.fast` or `models.capable` from `models.ts`
 
 ### DON'T
 
+- Don't hardcode model names - use `models.ts`
 - Don't make prompts overly generic
 - Don't include examples that bias output too strongly
 - Don't forget edge cases (single-page sites, complex hierarchies)
 - Don't hardcode business-specific assumptions
+- Don't skip `.describe()` on schema fields
 
 ## Testing Prompts
 
@@ -133,10 +170,14 @@ When modifying prompts, test with these business types:
 
 ### Adding a New AI Feature
 
-1. Create directory in `src/server/prompts/<feature-name>/`
-2. Define Zod schema with `.describe()` annotations
-3. Write system prompt (markdown for complex, inline for simple)
-4. Export async function using `generateObject()` or `generateText()`
+1. Create directory: `src/server/prompts/<feature-name>/`
+2. Create `schema.ts` with Zod schema and exported types
+3. Create `prompt.md` with system prompt
+4. Create `index.ts` with:
+   - Typed input/output interfaces
+   - Function using `loadPrompt()` and `formatUserPrompt()`
+   - Model from `models.ts`, limits from `tokenLimits`
+   - Usage stats in return value
 5. Wire up to API in `src/server/api/`
 
 ### Modifying Existing Prompts
@@ -144,7 +185,21 @@ When modifying prompts, test with these business types:
 1. Read the full existing prompt and schema
 2. Understand the business context and edge cases
 3. Make focused changes, test across business types
-4. Update prompt experiments doc if significant
+4. Update `docs/prompt-experiments.md` if significant
+
+### Using Shared Prompt Components
+
+Compose prompts from shared components:
+
+```typescript
+import { composePrompt, loadPrompt } from "@/lib/prompts";
+
+const systemPrompt = composePrompt([
+  loadPrompt("shared/business-types.md"),
+  loadPrompt("my-feature/prompt.md"),
+  loadPrompt("shared/output-rules.md"),
+]);
+```
 
 ## Related Documentation
 

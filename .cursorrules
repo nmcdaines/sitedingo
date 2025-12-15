@@ -44,33 +44,50 @@ import { db } from "@/db";
 
 All AI prompts live in `src/server/prompts/`
 
+### Structure
+
+```
+prompts/
+├── feature-name/
+│   ├── index.ts      # Function with typed I/O
+│   ├── schema.ts     # Zod schema + types
+│   └── prompt.md     # System prompt
+├── shared/           # Reusable components
+└── models.ts         # Model configuration
+```
+
 ### Pattern
 
 ```typescript
 import { generateObject } from "ai";
-import z from "zod";
+import { loadPrompt, formatUserPrompt } from "@/lib/prompts";
+import { models } from "../models";
+import { mySchema, type MyOutput } from "./schema";
 
-// Always use .describe() on schema fields
-const schema = z.object({
-  field: z.string().describe("Clear description for AI"),
-});
+const systemPrompt = loadPrompt("my-feature/prompt.md");
 
-export async function generateFeature(input: string) {
-  return await generateObject({
-    model: "google/gemini-2.5-flash",
+export async function generateFeature(input: MyInput): Promise<MyResult> {
+  const userPrompt = formatUserPrompt({ "Field": input.field });
+  
+  const result = await generateObject({
+    model: models.fast,
     system: systemPrompt,
-    prompt: input,
-    schema,
+    prompt: userPrompt,
+    schema: mySchema,
   });
+  
+  return { output: result.object, usage: { /* ... */ } };
 }
 ```
 
 ### Guidelines
 
-- Use `generateObject()` with Zod schemas (not free-form text)
-- Use `.describe()` on all schema fields
-- Use markdown files for prompts > 20 lines
-- Test prompts with diverse business types
+- Use `loadPrompt()` to load markdown prompt files
+- Use `formatUserPrompt()` for consistent user prompts
+- Use `models.fast` or `models.capable` from `models.ts`
+- Use `.describe()` on all Zod schema fields
+- Separate schemas into `schema.ts` with exported types
+- Return usage stats from generation functions
 
 ## Database
 

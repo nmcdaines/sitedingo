@@ -1,33 +1,79 @@
-import { generateObject } from "ai"
-import path from "path"
-import z from "zod"
+import { generateObject } from "ai";
+import { loadPrompt, formatUserPrompt } from "@/lib/prompts";
+import { models, tokenLimits } from "../models";
+import { sitemapSchema, type Sitemap } from "./schema";
 
-const systemPrompt = path.join(process.cwd(), "prompt.md")
+// Load system prompt from markdown file (cached at module load)
+const systemPrompt = loadPrompt("generate-sitemap/prompt.md");
 
-const pageSchema = z.object({
-  slug: z.string().describe('The URL path for the page (e.g., "/", "/about", "/contact"). Must start with "/" and use lowercase with hyphens for multi-word paths.'),
-  name: z.string().describe('The display name/title of the page as it should appear in navigation menus and page headers.'),
-  displayAsSinglePage: z.boolean().describe('Whether child sections should be rendered as collapsible sections on this page (true) or as separate child pages with their own URLs (false).'),
-  sections: z.array(z.string().describe('Title of a content section within this page. Each section represents a distinct topic or content block.')),
-  children: z.array(z.object({
-    slug: z.string().describe('The URL path for a child page, relative to the parent (e.g., "/services/consulting"). Must start with parent slug.'),
-    name: z.string().describe('The display name/title of the child page as it should appear in navigation and headers.')
-  }))
-})
+export interface GenerateSitemapInput {
+  /** Description of the business/website */
+  description: string;
+  /** Target number of pages (e.g., "5-7", "3-5") */
+  pagesCount?: string;
+  /** Optional business type hint */
+  businessType?: string;
+  /** Optional tone/style preference */
+  style?: string;
+}
 
-export async function generateAiSitemap(prompt: string, pagesCount: string = "2-5") {
-  const userPrompt = `
-    Please generate ${pagesCount} pages.
-    ${prompt}
-  `;
+export interface GenerateSitemapResult {
+  sitemap: Sitemap;
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+}
 
-  const result = await generateObject({
-    model: 'google/gemini-2.5-flash',
-    system: systemPrompt,
-    prompt: userPrompt,
-    schema: z.array(pageSchema),
-    maxOutputTokens: 3000,
+/**
+ * Generate a sitemap structure from a business description.
+ *
+ * @example
+ * ```ts
+ * const result = await generateSitemap({
+ *   description: "Cozy neighborhood cafe with specialty coffee",
+ *   pagesCount: "5-7",
+ *   businessType: "cafe",
+ * });
+ * console.log(result.sitemap);
+ * ```
+ */
+export async function generateSitemap(
+  input: GenerateSitemapInput
+): Promise<GenerateSitemapResult> {
+  const { description, pagesCount = "5-7", businessType, style } = input;
+
+  const userPrompt = formatUserPrompt({
+    "Business Description": description,
+    "Target Pages": pagesCount,
+    ...(businessType && { "Business Type": businessType }),
+    ...(style && { "Style": style }),
   });
 
-  return result;
+  const result = await generateObject({
+    model: models.fast,
+    system: systemPrompt,
+    prompt: userPrompt,
+    schema: sitemapSchema,
+    maxOutputTokens: tokenLimits.sitemap,
+  });
+
+  return {
+    sitemap: result.object,
+    usage: {
+      promptTokens: result.usage?.promptTokens ?? 0,
+      completionTokens: result.usage?.completionTokens ?? 0,
+      totalTokens: result.usage?.totalTokens ?? 0,
+    },
+  };
 }
+
+// Keep legacy export for backwards compatibility
+export const generateAiSitemap = async (
+  prompt: string,
+  pagesCount: string = "5-7"
+) => {
+  const result = await generateSitemap({ description: prompt, pagesCount });
+  return { object: result.sitemap };
+};

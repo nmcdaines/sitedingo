@@ -1,0 +1,114 @@
+# Cursor Rules for sitedingo
+
+## Project Context
+
+sitedingo is an AI-powered sitemap and page structure builder (similar to relume.io). Users describe their business and get generated sitemaps and page content.
+
+## Tech Stack
+
+- Next.js 16 (App Router)
+- React 19
+- Tailwind CSS 4
+- Vercel AI SDK (`ai` package)
+- Drizzle ORM + PostgreSQL
+- Elysia API
+- Clerk auth
+- Zod 4
+
+## Code Style
+
+### Naming
+
+- Files and folders: `kebab-case`
+- Components: `PascalCase`
+- Functions/variables: `camelCase`
+- Types/interfaces: `PascalCase`
+
+### Imports
+
+```typescript
+// Use path aliases
+import { Button } from "@/components/ui/button";
+import { db } from "@/db";
+```
+
+### Components
+
+- Use shadcn/ui components from `@/components/ui/`
+- Follow shadcn patterns for new components
+- Prefer composition over configuration
+
+## AI/Prompts
+
+### Location
+
+All AI prompts live in `src/server/prompts/`
+
+### Structure
+
+```
+prompts/
+├── feature-name/
+│   ├── index.ts      # Function with typed I/O
+│   ├── schema.ts     # Zod schema + types
+│   └── prompt.md     # System prompt
+├── shared/           # Reusable components
+└── models.ts         # Model configuration
+```
+
+### Pattern
+
+```typescript
+import { generateObject } from "ai";
+import { loadPrompt, formatUserPrompt } from "@/lib/prompts";
+import { models } from "../models";
+import { mySchema, type MyOutput } from "./schema";
+
+const systemPrompt = loadPrompt("my-feature/prompt.md");
+
+export async function generateFeature(input: MyInput): Promise<MyResult> {
+  const userPrompt = formatUserPrompt({ "Field": input.field });
+  
+  const result = await generateObject({
+    model: models.fast,
+    system: systemPrompt,
+    prompt: userPrompt,
+    schema: mySchema,
+  });
+  
+  return { output: result.object, usage: { /* ... */ } };
+}
+```
+
+### Guidelines
+
+- Use `loadPrompt()` to load markdown prompt files
+- Use `formatUserPrompt()` for consistent user prompts
+- Use `models.fast` or `models.capable` from `models.ts`
+- Use `.describe()` on all Zod schema fields
+- Separate schemas into `schema.ts` with exported types
+- Return usage stats from generation functions
+
+## Database
+
+- Schema in `src/db/schema.ts`
+- Use Drizzle's type-safe queries
+- Migrations via `drizzle-kit`
+
+## Key Directories
+
+```
+src/
+├── app/              # Next.js pages
+├── components/ui/    # shadcn components
+├── db/               # Database layer
+├── server/
+│   ├── api/         # Elysia API handlers
+│   └── prompts/     # AI prompt definitions
+```
+
+## Documentation
+
+- `AGENTS.md` - AI agent instructions
+- `docs/prompt-guidelines.md` - Prompt engineering standards
+- `docs/prompt-experiments.md` - Experiment tracking

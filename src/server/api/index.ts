@@ -31,8 +31,16 @@ const app = new Elysia({ prefix: "/api" })
         return JSON.stringify(result.object || '', null, 2)
     })
     .get("/page", async () => {
-        const result = await generateAiPage('Out Story', prompt)
-        return JSON.stringify(result.object || '', null, 2)
+        try {
+            const result = await generateAiPage('Our Story', prompt)
+            return JSON.stringify(result.object || '', null, 2)
+        } catch (error) {
+            console.error('API Error generating page:', error)
+            return JSON.stringify({
+                error: 'Failed to generate page',
+                message: error instanceof Error ? error.message : 'Unknown error'
+            }, null, 2)
+        }
     })
 
 export default app;

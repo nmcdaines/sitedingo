@@ -2,21 +2,43 @@
 
 import { useState, useCallback, useMemo } from "react";
 import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import {
   ProjectHeader,
   Toolbar,
   ZoomControls,
   SectionDetailPanel,
-  mockProjectData,
+  mockProjectData as initialMockData,
   type ViewMode,
   type ProjectSection,
   type ProjectPage as ProjectPageType,
+  type ProjectData,
 } from "@/components/project";
-import { PageCard } from "@/components/project/page-card";
+import { SortablePageCard } from "@/components/project/sortable-page-card";
+import { SortableSectionCard } from "@/components/project/sortable-section-card";
 import { SitemapConnections } from "@/components/project/connection-line";
 import { LayoutGrid, MoreHorizontal, Map } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function ProjectPage() {
+  // Project data state (mutable for reordering)
+  const [projectData, setProjectData] = useState<ProjectData>(initialMockData);
+  
   const [activeView, setActiveView] = useState<ViewMode>("sitemap");
   const [activeTool, setActiveTool] = useState("select");
   const [zoom, setZoom] = useState(75);
@@ -25,6 +47,21 @@ export default function ProjectPage() {
   const [pan, setPan] = useState({ x: 30, y: 10 });
   const [isPanning, setIsPanning] = useState(false);
   const [startPan, setStartPan] = useState({ x: 0, y: 0 });
+
+  // Drag state
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const handleZoomIn = useCallback(() => {
     setZoom((prev) => Math.min(prev + 10, 200));
@@ -81,6 +118,52 @@ export default function ProjectPage() {
     setIsPanning(false);
   }, []);
 
+  // Drag handlers
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  }, []);
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) {
+      setActiveId(null);
+      return;
+    }
+
+    setProjectData((prev) => {
+      const newData = JSON.parse(JSON.stringify(prev)) as ProjectData;
+      const homePage = newData.sitemap.pages[0];
+
+      // Check if we're reordering child pages
+      if (homePage.children) {
+        const oldIndex = homePage.children.findIndex(p => p.id === active.id);
+        const newIndex = homePage.children.findIndex(p => p.id === over.id);
+        
+        if (oldIndex !== -1 && newIndex !== -1) {
+          homePage.children = arrayMove(homePage.children, oldIndex, newIndex);
+          setActiveId(null);
+          return newData;
+        }
+      }
+
+      // Check if we're reordering sections within a page
+      const allPages = [homePage, ...(homePage.children || [])];
+      for (const page of allPages) {
+        const oldIndex = page.sections.findIndex(s => s.id === active.id);
+        const newIndex = page.sections.findIndex(s => s.id === over.id);
+        
+        if (oldIndex !== -1 && newIndex !== -1) {
+          page.sections = arrayMove(page.sections, oldIndex, newIndex);
+          break;
+        }
+      }
+
+      setActiveId(null);
+      return newData;
+    });
+  }, []);
+
   // Find the selected section and page name
   const selectedSection = useMemo((): { section: ProjectSection; pageName: string } | null => {
     if (!selectedPageId || !selectedSectionId) return null;
@@ -99,14 +182,36 @@ export default function ProjectPage() {
       return null;
     };
 
-    return findInPages(mockProjectData.sitemap.pages);
-  }, [selectedPageId, selectedSectionId]);
+    return findInPages(projectData.sitemap.pages);
+  }, [selectedPageId, selectedSectionId, projectData]);
+
+  // Find active drag item for overlay
+  const getActiveDragItem = (): { type: "page" | "section"; item: ProjectPageType | ProjectSection } | null => {
+    if (!activeId) return null;
+    
+    const pages = [projectData.sitemap.pages[0], ...(projectData.sitemap.pages[0].children || [])];
+    
+    // Check if it's a page
+    const page = pages.find(p => p.id === activeId);
+    if (page) return { type: "page", item: page };
+    
+    // Check if it's a section
+    for (const p of pages) {
+      const section = p.sections.find(s => s.id === activeId);
+      if (section) return { type: "section", item: section };
+    }
+    
+    return null;
+  };
+  
+  const activeDragItem = getActiveDragItem();
 
   // Calculate page positions and connections
-  const { allPages, connections, canvasWidth } = useMemo(() => {
-    const sitemap = mockProjectData.sitemap;
+  const { allPages, connections, canvasWidth, childPageIds } = useMemo(() => {
+    const sitemap = projectData.sitemap;
     const pagesList: { page: ProjectPageType; x: number; y: number; isHome: boolean }[] = [];
     const connectionsList: { from: { x: number; y: number }; to: { x: number; y: number } }[] = [];
+    const childIds: string[] = [];
 
     if (sitemap.pages.length > 0) {
       const homePage = sitemap.pages[0];
@@ -129,6 +234,7 @@ export default function ProjectPage() {
           const childY = 580;
           
           pagesList.push({ page: child, x: childX, y: childY, isHome: false });
+          childIds.push(child.id);
           
           // Add connection
           connectionsList.push({
@@ -140,14 +246,14 @@ export default function ProjectPage() {
     }
 
     const width = Math.max(...pagesList.map(p => p.x + 280), 1400);
-    return { allPages: pagesList, connections: connectionsList, canvasWidth: width };
-  }, []);
+    return { allPages: pagesList, connections: connectionsList, canvasWidth: width, childPageIds: childIds };
+  }, [projectData]);
 
   return (
     <div className="h-screen w-screen flex flex-col bg-background overflow-hidden">
       {/* Header */}
       <ProjectHeader
-        project={mockProjectData}
+        project={projectData}
         activeView={activeView}
         onViewChange={setActiveView}
       />
@@ -159,91 +265,122 @@ export default function ProjectPage() {
 
         {/* Canvas */}
         {activeView === "sitemap" && (
-          <div
-            className={cn(
-              "flex-1 bg-[#f5f5f0] overflow-hidden relative",
-              isPanning ? "cursor-grabbing" : "cursor-default"
-            )}
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
           >
-            {/* Canvas Content with transform */}
             <div
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom / 100})`,
-                transformOrigin: "top left",
-                width: `${canvasWidth}px`,
-                height: "1100px",
-              }}
+              className={cn(
+                "flex-1 bg-[#f5f5f0] overflow-hidden relative",
+                isPanning ? "cursor-grabbing" : "cursor-default"
+              )}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp}
             >
-              {/* Project Header Card */}
-              <div 
-                style={{ 
-                  position: "absolute", 
-                  left: 0, 
-                  top: 0, 
-                  width: canvasWidth - 60,
+              {/* Canvas Content with transform */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom / 100})`,
+                  transformOrigin: "top left",
+                  width: `${canvasWidth}px`,
+                  height: "1100px",
                 }}
-                className="bg-card border border-border rounded-lg shadow-sm"
               >
-                <div className="flex items-center justify-between px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <LayoutGrid className="w-4 h-4 text-muted-foreground" />
-                    <span className="font-medium">Project</span>
-                  </div>
-                  <button className="p-1 rounded hover:bg-muted transition-colors">
-                    <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Sitemap Header Card */}
-              <div 
-                style={{ 
-                  position: "absolute", 
-                  left: 20, 
-                  top: 52, 
-                  width: canvasWidth - 100,
-                }}
-                className="bg-card border border-border rounded-lg shadow-sm"
-              >
-                <div className="flex items-center justify-between px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    <Map className="w-4 h-4 text-muted-foreground" />
-                    <span className="font-medium text-sm">{mockProjectData.sitemap.name}</span>
-                  </div>
-                  <button className="p-1 rounded hover:bg-muted transition-colors">
-                    <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Connection Lines */}
-              <SitemapConnections connections={connections} />
-
-              {/* Page Cards */}
-              {allPages.map(({ page, x, y, isHome }) => (
-                <div
-                  key={page.id}
-                  style={{ position: "absolute", left: x, top: y }}
+                {/* Project Header Card */}
+                <div 
+                  style={{ 
+                    position: "absolute", 
+                    left: 0, 
+                    top: 0, 
+                    width: canvasWidth - 60,
+                  }}
+                  className="bg-card border border-border rounded-lg shadow-sm"
                 >
-                  <PageCard
-                    page={page}
-                    isSelected={selectedPageId === page.id}
-                    selectedSectionId={selectedPageId === page.id ? selectedSectionId : undefined}
-                    onClick={() => handlePageSelect(page.id)}
-                    onSectionClick={(sectionId) => handleSectionSelect(page.id, sectionId)}
-                    compact={!isHome}
+                  <div className="flex items-center justify-between px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <LayoutGrid className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-medium">Project</span>
+                    </div>
+                    <button className="p-1 rounded hover:bg-muted transition-colors">
+                      <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sitemap Header Card */}
+                <div 
+                  style={{ 
+                    position: "absolute", 
+                    left: 20, 
+                    top: 52, 
+                    width: canvasWidth - 100,
+                  }}
+                  className="bg-card border border-border rounded-lg shadow-sm"
+                >
+                  <div className="flex items-center justify-between px-4 py-2">
+                    <div className="flex items-center gap-2">
+                      <Map className="w-4 h-4 text-muted-foreground" />
+                      <span className="font-medium text-sm">{projectData.sitemap.name}</span>
+                    </div>
+                    <button className="p-1 rounded hover:bg-muted transition-colors">
+                      <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Connection Lines */}
+                <SitemapConnections connections={connections} />
+
+                {/* Page Cards with Sortable Context for child pages */}
+                <SortableContext items={childPageIds} strategy={horizontalListSortingStrategy}>
+                  {allPages.map(({ page, x, y, isHome }) => (
+                    <div
+                      key={page.id}
+                      style={{ position: "absolute", left: x, top: y }}
+                    >
+                      <SortablePageCard
+                        page={page}
+                        isSelected={selectedPageId === page.id}
+                        selectedSectionId={selectedPageId === page.id ? selectedSectionId : undefined}
+                        onClick={() => handlePageSelect(page.id)}
+                        onSectionClick={(sectionId) => handleSectionSelect(page.id, sectionId)}
+                        compact={!isHome}
+                        isDraggable={!isHome} // Only child pages are draggable
+                      />
+                    </div>
+                  ))}
+                </SortableContext>
+              </div>
+            </div>
+
+            {/* Drag Overlay */}
+            <DragOverlay>
+              {activeDragItem?.type === "section" && (
+                <div className="opacity-90">
+                  <SortableSectionCard
+                    section={activeDragItem.item as ProjectSection}
+                    compact={false}
                   />
                 </div>
-              ))}
-            </div>
-          </div>
+              )}
+              {activeDragItem?.type === "page" && (
+                <div className="opacity-90">
+                  <SortablePageCard
+                    page={activeDragItem.item as ProjectPageType}
+                    compact={true}
+                    isDraggable={false}
+                  />
+                </div>
+              )}
+            </DragOverlay>
+          </DndContext>
         )}
 
         {/* Placeholder for other views */}

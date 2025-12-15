@@ -4,6 +4,8 @@ export { ZoomControls } from "./zoom-controls";
 export { SitemapCanvas } from "./sitemap-canvas";
 export { PageCard } from "./page-card";
 export { SectionCard } from "./section-card";
+export { SortablePageCard } from "./sortable-page-card";
+export { SortableSectionCard } from "./sortable-section-card";
 export { SectionDetailPanel } from "./section-detail-panel";
 export { SitemapConnections, ConnectionLine } from "./connection-line";
 export * from "./types";

@@ -25,7 +25,7 @@ export function ConnectionLine({
 
   return (
     <svg
-      className="absolute inset-0 pointer-events-none overflow-visible"
+      className="absolute top-0 left-0 w-full h-full pointer-events-none overflow-visible"
       style={{ zIndex: 0 }}
     >
       <path
@@ -45,10 +45,16 @@ export function SitemapConnections({
 }: {
   connections: { from: { x: number; y: number }; to: { x: number; y: number } }[];
 }) {
+  if (connections.length === 0) return null;
+
   return (
     <svg
-      className="absolute inset-0 pointer-events-none overflow-visible"
-      style={{ zIndex: 0 }}
+      className="absolute top-0 left-0 pointer-events-none"
+      style={{ 
+        zIndex: 0,
+        width: "3000px",
+        height: "2000px",
+      }}
     >
       {connections.map((conn, index) => {
         const { from, to } = conn;
@@ -66,9 +72,8 @@ export function SitemapConnections({
             key={index}
             d={path}
             fill="none"
-            stroke="currentColor"
+            stroke="#e5e5e5"
             strokeWidth="2"
-            className="text-border"
           />
         );
       })}

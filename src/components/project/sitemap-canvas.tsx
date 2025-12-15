@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { PageCard } from "./page-card";
 import { SitemapConnections } from "./connection-line";
@@ -37,7 +37,7 @@ export function SitemapCanvas({
   onSectionSelect,
 }: SitemapCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [pan, setPan] = useState<Position>({ x: 0, y: 0 });
+  const [pan, setPan] = useState<Position>({ x: 50, y: 20 });
   const [isPanning, setIsPanning] = useState(false);
   const [startPan, setStartPan] = useState<Position>({ x: 0, y: 0 });
 
@@ -71,127 +71,102 @@ export function SitemapCanvas({
     setIsPanning(false);
   }, []);
 
-  // Calculate positions for pages - centered layout with home at top
-  const getPagePositions = useCallback(() => {
+  // Calculate all page positions using useMemo for stability
+  const { connections, allPages, canvasWidth } = useMemo(() => {
     const positions: Record<string, PagePosition> = {};
     const sitemap = project.sitemap;
+    const connectionsList: { from: Position; to: Position }[] = [];
+    const pagesList: { page: ProjectPage; position: Position; isHome: boolean }[] = [];
 
     if (sitemap.pages.length > 0) {
       const homePage = sitemap.pages[0];
       const homeWidth = 260;
       const childWidth = 220;
       const childSpacing = 240;
-      
+
       // Calculate total width needed for children
       const childCount = homePage.children?.length || 0;
-      const totalChildrenWidth = childCount * childWidth + (childCount - 1) * (childSpacing - childWidth);
-      
+      const totalChildrenWidth = childCount > 0 
+        ? childCount * childSpacing 
+        : 0;
+
       // Center home page above children
-      const homeX = childCount > 0 
-        ? (totalChildrenWidth / 2) - (homeWidth / 2) + 80
+      const homeX = childCount > 0
+        ? (totalChildrenWidth / 2) - (homeWidth / 2) + 40
         : 400;
 
-      positions[homePage.id] = { 
-        x: homeX, 
-        y: 120, 
-        width: homeWidth, 
-        height: 450 
+      positions[homePage.id] = {
+        x: homeX,
+        y: 100,
+        width: homeWidth,
+        height: 420,
       };
 
+      // Add home page to list
+      pagesList.push({
+        page: homePage,
+        position: { x: homeX, y: 100 },
+        isHome: true,
+      });
+
       // Position child pages in a row below home
-      if (homePage.children) {
-        const startX = 80;
-        
+      if (homePage.children && homePage.children.length > 0) {
+        const startX = 40;
+
         homePage.children.forEach((child, index) => {
+          const childX = startX + index * childSpacing;
+          const childY = 600;
+
           positions[child.id] = {
-            x: startX + index * childSpacing,
-            y: 650,
+            x: childX,
+            y: childY,
             width: childWidth,
-            height: 280,
+            height: 260,
           };
+
+          // Add child page to list
+          pagesList.push({
+            page: child,
+            position: { x: childX, y: childY },
+            isHome: false,
+          });
+
+          // Add connection from home to child
+          connectionsList.push({
+            from: {
+              x: homeX + homeWidth / 2,
+              y: 100 + 420, // home bottom
+            },
+            to: {
+              x: childX + childWidth / 2,
+              y: childY,
+            },
+          });
         });
       }
     }
 
-    return positions;
+    // Calculate canvas width
+    const positionValues = Object.values(positions);
+    const width = positionValues.length > 0
+      ? Math.max(...positionValues.map((p) => p.x + p.width), 1200) + 100
+      : 1300;
+
+    return {
+      connections: connectionsList,
+      allPages: pagesList,
+      canvasWidth: width,
+    };
   }, [project.sitemap]);
-
-  const pagePositions = getPagePositions();
-
-  // Calculate connection lines from home to each child page
-  const getConnections = useCallback(() => {
-    const connections: { from: Position; to: Position }[] = [];
-    const sitemap = project.sitemap;
-
-    if (sitemap.pages.length > 0 && sitemap.pages[0].children) {
-      const homePage = sitemap.pages[0];
-      const homePos = pagePositions[homePage.id];
-
-      if (homePos) {
-        const fromPoint = {
-          x: homePos.x + homePos.width / 2,
-          y: homePos.y + homePos.height,
-        };
-
-        homePage.children?.forEach((child) => {
-          const childPos = pagePositions[child.id];
-          if (childPos) {
-            connections.push({
-              from: fromPoint,
-              to: {
-                x: childPos.x + childPos.width / 2,
-                y: childPos.y,
-              },
-            });
-          }
-        });
-      }
-    }
-
-    return connections;
-  }, [project.sitemap, pagePositions]);
-
-  const connections = getConnections();
-
-  // Get all pages for rendering
-  const getAllPages = useCallback(() => {
-    const pages: { page: ProjectPage; position: Position; isHome: boolean }[] = [];
-    const sitemap = project.sitemap;
-
-    sitemap.pages.forEach((page) => {
-      const pos = pagePositions[page.id];
-      if (pos) {
-        pages.push({ page, position: { x: pos.x, y: pos.y }, isHome: true });
-      }
-
-      if (page.children) {
-        page.children.forEach((child) => {
-          const childPos = pagePositions[child.id];
-          if (childPos) {
-            pages.push({ page: child, position: { x: childPos.x, y: childPos.y }, isHome: false });
-          }
-        });
-      }
-    });
-
-    return pages;
-  }, [project.sitemap, pagePositions]);
-
-  const allPages = getAllPages();
-
-  // Calculate canvas bounds for project/sitemap headers
-  const canvasWidth = Math.max(
-    ...Object.values(pagePositions).map(p => p.x + p.width),
-    1200
-  ) + 100;
 
   return (
     <div
       ref={containerRef}
       className={cn(
-        "flex-1 bg-[#f5f5f0] overflow-hidden relative",
+        "flex-1 min-h-0 bg-[#f5f5f0] overflow-hidden relative",
         isPanning ? "cursor-grabbing" : "cursor-default"
       )}
+      style={{ minHeight: "400px" }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
@@ -206,32 +181,34 @@ export function SitemapCanvas({
         }}
       >
         {/* Project Header Card */}
-        <div className="absolute" style={{ left: 40, top: 20, width: canvasWidth - 80 }}>
-          <div className="bg-card border border-border rounded-lg shadow-sm">
-            <div className="flex items-center justify-between px-4 py-3">
-              <div className="flex items-center gap-2">
-                <LayoutGrid className="w-4 h-4 text-muted-foreground" />
-                <span className="font-medium">Project</span>
-              </div>
-              <button className="p-1 rounded hover:bg-muted transition-colors">
-                <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-              </button>
+        <div 
+          className="absolute bg-card border border-border rounded-lg shadow-sm"
+          style={{ left: 0, top: 0, width: canvasWidth - 40 }}
+        >
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-2">
+              <LayoutGrid className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium">Project</span>
             </div>
+            <button className="p-1 rounded hover:bg-muted transition-colors">
+              <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+            </button>
           </div>
         </div>
 
         {/* Sitemap Header Card */}
-        <div className="absolute" style={{ left: 60, top: 65, width: canvasWidth - 120 }}>
-          <div className="bg-card border border-border rounded-lg shadow-sm">
-            <div className="flex items-center justify-between px-4 py-2.5">
-              <div className="flex items-center gap-2">
-                <Map className="w-4 h-4 text-muted-foreground" />
-                <span className="font-medium text-sm">{project.sitemap.name}</span>
-              </div>
-              <button className="p-1 rounded hover:bg-muted transition-colors">
-                <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-              </button>
+        <div 
+          className="absolute bg-card border border-border rounded-lg shadow-sm"
+          style={{ left: 20, top: 55, width: canvasWidth - 80 }}
+        >
+          <div className="flex items-center justify-between px-4 py-2.5">
+            <div className="flex items-center gap-2">
+              <Map className="w-4 h-4 text-muted-foreground" />
+              <span className="font-medium text-sm">{project.sitemap.name}</span>
             </div>
+            <button className="p-1 rounded hover:bg-muted transition-colors">
+              <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+            </button>
           </div>
         </div>
 
@@ -255,6 +232,7 @@ export function SitemapCanvas({
             />
           </div>
         ))}
+
       </div>
     </div>
   );

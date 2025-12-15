@@ -1,12 +1,6 @@
 import { generateObject } from "ai";
 import z from 'zod'
-
-const systemPrompt = `
-You are a website architect specializing in creating clear, user-friendly sitemaps.
-
-Given a specific page title, and the user's description of what their website represents
-generate some example content for the given page.
-`.trim()
+import { loadPromptWithVars } from './prompt-loader';
 
 const pageSchema = z.object({
   title: z.string(),
@@ -17,18 +11,18 @@ const pageSchema = z.object({
   }))
 })
 
-export async function generateAiPage(pageTitle: string, description: string) {
-  const userPrompt = `
-Page: ${pageTitle}
-Description: ${description}  
-  `.trim()
+export async function generateAiPage(pageTitle: string, businessDescription: string) {
+  const prompt = await loadPromptWithVars('generate-page/prompt.md', {
+    pageTitle,
+    businessDescription,
+  });
 
   const result = await generateObject({
-    model: 'google/gemini-2.5-pro',
-    system: systemPrompt,
-    prompt: userPrompt,
+    model: prompt.metadata.model || 'google/gemini-2.5-pro',
+    system: prompt.content,
+    prompt: '', // All context is in the system prompt with variables
     schema: pageSchema,
-    maxOutputTokens: 4000,
+    maxOutputTokens: prompt.metadata.maxTokens || 4000,
   });
 
   return result;

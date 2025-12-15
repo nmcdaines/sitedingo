@@ -1,8 +1,6 @@
 import { generateObject } from "ai"
-import path from "path"
 import z from "zod"
-
-const systemPrompt = path.join(process.cwd(), "prompt.md")
+import { loadPrompt } from '../prompt-loader';
 
 const pageSchema = z.object({
   slug: z.string().describe('The URL path for the page (e.g., "/", "/about", "/contact"). Must start with "/" and use lowercase with hyphens for multi-word paths.'),
@@ -15,18 +13,21 @@ const pageSchema = z.object({
   }))
 })
 
-export async function generateAiSitemap(prompt: string, pagesCount: string = "2-5") {
-  const userPrompt = `
-    Please generate ${pagesCount} pages.
-    ${prompt}
-  `;
+export async function generateAiSitemap(userPrompt: string, pagesCount: string = "2-5") {
+  const prompt = await loadPrompt('generate-sitemap/prompt.md');
+  
+  const fullUserPrompt = `
+Please generate ${pagesCount} pages.
+
+${userPrompt}
+  `.trim();
 
   const result = await generateObject({
-    model: 'google/gemini-2.5-flash',
-    system: systemPrompt,
-    prompt: userPrompt,
+    model: prompt.metadata.model || 'google/gemini-2.5-flash',
+    system: prompt.content,
+    prompt: fullUserPrompt,
     schema: z.array(pageSchema),
-    maxOutputTokens: 3000,
+    maxOutputTokens: prompt.metadata.maxTokens || 3000,
   });
 
   return result;

@@ -20,7 +20,7 @@ import {
   GripVertical,
 } from "lucide-react";
 import { SortableSectionCard } from "./sortable-section-card";
-import type { ProjectPage, PageIcon, ProjectSection } from "./types";
+import type { ProjectPage, PageIcon } from "./types";
 
 const iconMap: Record<PageIcon, React.ComponentType<{ className?: string }>> = {
   home: Home,
@@ -38,10 +38,10 @@ interface SortablePageCardProps {
   isSelected?: boolean;
   onClick?: () => void;
   onSectionClick?: (sectionId: string) => void;
-  onSectionsReorder?: (pageId: string, sections: ProjectSection[]) => void;
   selectedSectionId?: string;
   compact?: boolean;
   isDraggable?: boolean;
+  isOverlay?: boolean;
 }
 
 export function SortablePageCard({
@@ -52,6 +52,7 @@ export function SortablePageCard({
   selectedSectionId,
   compact = false,
   isDraggable = true,
+  isOverlay = false,
 }: SortablePageCardProps) {
   const {
     attributes,
@@ -62,12 +63,13 @@ export function SortablePageCard({
     isDragging,
   } = useSortable({ 
     id: page.id,
-    disabled: !isDraggable,
+    disabled: !isDraggable || isOverlay,
   });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isDragging ? 0.4 : 1,
   };
 
   const Icon = page.icon ? iconMap[page.icon] : FileText;
@@ -76,12 +78,13 @@ export function SortablePageCard({
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={isOverlay ? undefined : style}
       className={cn(
         "bg-card border border-border rounded-xl shadow-sm overflow-hidden",
-        "transition-all hover:shadow-md",
+        "transition-colors hover:shadow-md",
         isSelected && "ring-2 ring-primary",
-        isDragging && "opacity-50 shadow-xl z-50",
+        isDragging && "border-dashed border-primary/50 bg-primary/5",
+        isOverlay && "shadow-xl border-primary cursor-grabbing",
         compact ? "w-[220px]" : "w-[260px]"
       )}
     >

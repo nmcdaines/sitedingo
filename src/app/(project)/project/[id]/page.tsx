@@ -11,6 +11,8 @@ import {
   useSensors,
   type DragStartEvent,
   type DragEndEvent,
+  type DropAnimation,
+  defaultDropAnimationSideEffects,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -360,22 +362,45 @@ export default function ProjectPage() {
               </div>
             </div>
 
-            {/* Drag Overlay */}
-            <DragOverlay>
+            {/* Drag Overlay - rendered at document level with high z-index */}
+            <DragOverlay
+              dropAnimation={{
+                sideEffects: defaultDropAnimationSideEffects({
+                  styles: {
+                    active: {
+                      opacity: "0.4",
+                    },
+                  },
+                }),
+              } as DropAnimation}
+              zIndex={9999}
+            >
               {activeDragItem?.type === "section" && (
-                <div className="opacity-90">
+                <div 
+                  style={{ 
+                    transform: `scale(${zoom / 100})`,
+                    transformOrigin: "top left",
+                  }}
+                >
                   <SortableSectionCard
                     section={activeDragItem.item as ProjectSection}
                     compact={false}
+                    isOverlay
                   />
                 </div>
               )}
               {activeDragItem?.type === "page" && (
-                <div className="opacity-90">
+                <div 
+                  style={{ 
+                    transform: `scale(${zoom / 100})`,
+                    transformOrigin: "top left",
+                  }}
+                >
                   <SortablePageCard
                     page={activeDragItem.item as ProjectPageType}
                     compact={true}
                     isDraggable={false}
+                    isOverlay
                   />
                 </div>
               )}

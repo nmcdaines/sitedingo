@@ -11,6 +11,7 @@ interface SortableSectionCardProps {
   isSelected?: boolean;
   onClick?: () => void;
   compact?: boolean;
+  isOverlay?: boolean;
 }
 
 export function SortableSectionCard({
@@ -18,6 +19,7 @@ export function SortableSectionCard({
   isSelected,
   onClick,
   compact = false,
+  isOverlay = false,
 }: SortableSectionCardProps) {
   const {
     attributes,
@@ -26,11 +28,12 @@ export function SortableSectionCard({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: section.id });
+  } = useSortable({ id: section.id, disabled: isOverlay });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
+    opacity: isDragging ? 0.4 : 1,
   };
 
   const hasDescription = !!section.description;
@@ -38,13 +41,14 @@ export function SortableSectionCard({
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={isOverlay ? undefined : style}
       onClick={onClick}
       className={cn(
-        "border border-border bg-white rounded-lg cursor-pointer transition-all group",
+        "border border-border bg-white rounded-lg cursor-pointer transition-colors group",
         "hover:border-primary/50 hover:shadow-sm",
         isSelected && "border-primary ring-2 ring-primary/20",
-        isDragging && "opacity-50 shadow-lg z-50",
+        isDragging && "border-dashed border-primary/50 bg-primary/5",
+        isOverlay && "shadow-lg border-primary cursor-grabbing",
         hasDescription ? (compact ? "p-2" : "p-2.5") : "p-2"
       )}
     >

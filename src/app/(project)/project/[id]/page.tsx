@@ -376,33 +376,19 @@ export default function ProjectPage() {
               zIndex={9999}
             >
               {activeDragItem?.type === "section" && (
-                <div 
-                  style={{ 
-                    transform: `scale(${zoom / 100})`,
-                    transformOrigin: "top left",
-                  }}
-                >
-                  <SortableSectionCard
-                    section={activeDragItem.item as ProjectSection}
-                    compact={false}
-                    isOverlay
-                  />
-                </div>
+                <SortableSectionCard
+                  section={activeDragItem.item as ProjectSection}
+                  compact={false}
+                  isOverlay
+                />
               )}
               {activeDragItem?.type === "page" && (
-                <div 
-                  style={{ 
-                    transform: `scale(${zoom / 100})`,
-                    transformOrigin: "top left",
-                  }}
-                >
-                  <SortablePageCard
-                    page={activeDragItem.item as ProjectPageType}
-                    compact={true}
-                    isDraggable={false}
-                    isOverlay
-                  />
-                </div>
+                <SortablePageCard
+                  page={activeDragItem.item as ProjectPageType}
+                  compact={true}
+                  isDraggable={false}
+                  isOverlay
+                />
               )}
             </DragOverlay>
           </DndContext>

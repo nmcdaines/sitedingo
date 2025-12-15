@@ -1,0 +1,97 @@
+# Cursor Rules for openbiz
+
+## Project Context
+
+openbiz is an AI-powered sitemap and page structure builder (similar to relume.io). Users describe their business and get generated sitemaps and page content.
+
+## Tech Stack
+
+- Next.js 16 (App Router)
+- React 19
+- Tailwind CSS 4
+- Vercel AI SDK (`ai` package)
+- Drizzle ORM + PostgreSQL
+- Elysia API
+- Clerk auth
+- Zod 4
+
+## Code Style
+
+### Naming
+
+- Files and folders: `kebab-case`
+- Components: `PascalCase`
+- Functions/variables: `camelCase`
+- Types/interfaces: `PascalCase`
+
+### Imports
+
+```typescript
+// Use path aliases
+import { Button } from "@/components/ui/button";
+import { db } from "@/db";
+```
+
+### Components
+
+- Use shadcn/ui components from `@/components/ui/`
+- Follow shadcn patterns for new components
+- Prefer composition over configuration
+
+## AI/Prompts
+
+### Location
+
+All AI prompts live in `src/server/prompts/`
+
+### Pattern
+
+```typescript
+import { generateObject } from "ai";
+import z from "zod";
+
+// Always use .describe() on schema fields
+const schema = z.object({
+  field: z.string().describe("Clear description for AI"),
+});
+
+export async function generateFeature(input: string) {
+  return await generateObject({
+    model: "google/gemini-2.5-flash",
+    system: systemPrompt,
+    prompt: input,
+    schema,
+  });
+}
+```
+
+### Guidelines
+
+- Use `generateObject()` with Zod schemas (not free-form text)
+- Use `.describe()` on all schema fields
+- Use markdown files for prompts > 20 lines
+- Test prompts with diverse business types
+
+## Database
+
+- Schema in `src/db/schema.ts`
+- Use Drizzle's type-safe queries
+- Migrations via `drizzle-kit`
+
+## Key Directories
+
+```
+src/
+├── app/              # Next.js pages
+├── components/ui/    # shadcn components
+├── db/               # Database layer
+├── server/
+│   ├── api/         # Elysia API handlers
+│   └── prompts/     # AI prompt definitions
+```
+
+## Documentation
+
+- `AGENTS.md` - AI agent instructions
+- `docs/prompt-guidelines.md` - Prompt engineering standards
+- `docs/prompt-experiments.md` - Experiment tracking

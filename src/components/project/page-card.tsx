@@ -9,6 +9,8 @@ import {
   Mail,
   Settings,
   MoreHorizontal,
+  Image,
+  Star,
 } from "lucide-react";
 import { SectionCard } from "./section-card";
 import type { ProjectPage, PageIcon } from "./types";
@@ -20,6 +22,8 @@ const iconMap: Record<PageIcon, React.ComponentType<{ className?: string }>> = {
   briefcase: Briefcase,
   mail: Mail,
   settings: Settings,
+  image: Image,
+  star: Star,
 };
 
 interface PageCardProps {
@@ -47,7 +51,7 @@ export function PageCard({
         "bg-card border border-border rounded-xl shadow-sm overflow-hidden",
         "transition-all hover:shadow-md",
         isSelected && "ring-2 ring-primary",
-        compact ? "w-[200px]" : "w-[280px]"
+        compact ? "w-[220px]" : "w-[260px]"
       )}
     >
       {/* Page Header */}
@@ -60,7 +64,7 @@ export function PageCard({
       >
         <div className="flex items-center gap-2">
           <Icon className="w-4 h-4 text-muted-foreground" />
-          <span className="font-medium text-sm">{page.name}</span>
+          <span className={cn("font-medium", compact ? "text-sm" : "text-sm")}>{page.name}</span>
         </div>
         <button
           className="p-1 rounded hover:bg-background transition-colors"
@@ -74,13 +78,19 @@ export function PageCard({
       </div>
 
       {/* Sections */}
-      <div className={cn("p-2 space-y-2", compact ? "max-h-[300px]" : "max-h-[500px]", "overflow-y-auto")}>
+      <div 
+        className={cn(
+          "p-2 space-y-1.5 overflow-y-auto",
+          compact ? "max-h-[220px]" : "max-h-[380px]"
+        )}
+      >
         {page.sections.map((section) => (
           <SectionCard
             key={section.id}
             section={section}
             isSelected={selectedSectionId === section.id}
             onClick={() => onSectionClick?.(section.id)}
+            compact={compact}
           />
         ))}
       </div>

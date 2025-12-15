@@ -4,7 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { PageCard } from "./page-card";
 import { SitemapConnections } from "./connection-line";
-import { LayoutGrid, MoreHorizontal } from "lucide-react";
+import { LayoutGrid, MoreHorizontal, Map } from "lucide-react";
 import type { ProjectPage, ProjectData } from "./types";
 
 interface SitemapCanvasProps {
@@ -19,6 +19,13 @@ interface SitemapCanvasProps {
 interface Position {
   x: number;
   y: number;
+}
+
+interface PagePosition {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 export function SitemapCanvas({
@@ -64,51 +71,69 @@ export function SitemapCanvas({
     setIsPanning(false);
   }, []);
 
-  // Calculate positions for pages
+  // Calculate positions for pages - centered layout with home at top
   const getPagePositions = useCallback(() => {
-    const positions: Record<string, { x: number; y: number; width: number; height: number }> = {};
+    const positions: Record<string, PagePosition> = {};
+    const sitemap = project.sitemap;
 
-    // Position the root page (Home)
-    if (project.pages.length > 0) {
-      const rootPage = project.pages[0];
-      positions[rootPage.id] = { x: 400, y: 80, width: 280, height: 600 };
+    if (sitemap.pages.length > 0) {
+      const homePage = sitemap.pages[0];
+      const homeWidth = 260;
+      const childWidth = 220;
+      const childSpacing = 240;
+      
+      // Calculate total width needed for children
+      const childCount = homePage.children?.length || 0;
+      const totalChildrenWidth = childCount * childWidth + (childCount - 1) * (childSpacing - childWidth);
+      
+      // Center home page above children
+      const homeX = childCount > 0 
+        ? (totalChildrenWidth / 2) - (homeWidth / 2) + 80
+        : 400;
 
-      // Position child pages
-      if (rootPage.children) {
-        const startX = 100;
-        const spacing = 320;
+      positions[homePage.id] = { 
+        x: homeX, 
+        y: 120, 
+        width: homeWidth, 
+        height: 450 
+      };
 
-        rootPage.children.forEach((child, index) => {
+      // Position child pages in a row below home
+      if (homePage.children) {
+        const startX = 80;
+        
+        homePage.children.forEach((child, index) => {
           positions[child.id] = {
-            x: startX + index * spacing,
-            y: 750,
-            width: 280,
-            height: 350,
+            x: startX + index * childSpacing,
+            y: 650,
+            width: childWidth,
+            height: 280,
           };
         });
       }
     }
 
     return positions;
-  }, [project.pages]);
+  }, [project.sitemap]);
 
   const pagePositions = getPagePositions();
 
-  // Calculate connection lines
+  // Calculate connection lines from home to each child page
   const getConnections = useCallback(() => {
     const connections: { from: Position; to: Position }[] = [];
+    const sitemap = project.sitemap;
 
-    if (project.pages.length > 0 && project.pages[0].children) {
-      const rootPage = project.pages[0];
-      const rootPos = pagePositions[rootPage.id];
+    if (sitemap.pages.length > 0 && sitemap.pages[0].children) {
+      const homePage = sitemap.pages[0];
+      const homePos = pagePositions[homePage.id];
 
-      if (rootPos) {
+      if (homePos) {
         const fromPoint = {
-          x: rootPos.x + rootPos.width / 2,
-          y: rootPos.y + rootPos.height,
+          x: homePos.x + homePos.width / 2,
+          y: homePos.y + homePos.height,
         };
 
-        rootPage.children.forEach((child) => {
+        homePage.children?.forEach((child) => {
           const childPos = pagePositions[child.id];
           if (childPos) {
             connections.push({
@@ -124,34 +149,41 @@ export function SitemapCanvas({
     }
 
     return connections;
-  }, [project.pages, pagePositions]);
+  }, [project.sitemap, pagePositions]);
 
   const connections = getConnections();
 
-  // Flatten pages for rendering
+  // Get all pages for rendering
   const getAllPages = useCallback(() => {
-    const pages: { page: ProjectPage; position: Position }[] = [];
+    const pages: { page: ProjectPage; position: Position; isHome: boolean }[] = [];
+    const sitemap = project.sitemap;
 
-    project.pages.forEach((page) => {
+    sitemap.pages.forEach((page) => {
       const pos = pagePositions[page.id];
       if (pos) {
-        pages.push({ page, position: { x: pos.x, y: pos.y } });
+        pages.push({ page, position: { x: pos.x, y: pos.y }, isHome: true });
       }
 
       if (page.children) {
         page.children.forEach((child) => {
           const childPos = pagePositions[child.id];
           if (childPos) {
-            pages.push({ page: child, position: { x: childPos.x, y: childPos.y } });
+            pages.push({ page: child, position: { x: childPos.x, y: childPos.y }, isHome: false });
           }
         });
       }
     });
 
     return pages;
-  }, [project.pages, pagePositions]);
+  }, [project.sitemap, pagePositions]);
 
   const allPages = getAllPages();
+
+  // Calculate canvas bounds for project/sitemap headers
+  const canvasWidth = Math.max(
+    ...Object.values(pagePositions).map(p => p.x + p.width),
+    1200
+  ) + 100;
 
   return (
     <div
@@ -174,7 +206,7 @@ export function SitemapCanvas({
         }}
       >
         {/* Project Header Card */}
-        <div className="absolute" style={{ left: 60, top: 20, width: 1000 }}>
+        <div className="absolute" style={{ left: 40, top: 20, width: canvasWidth - 80 }}>
           <div className="bg-card border border-border rounded-lg shadow-sm">
             <div className="flex items-center justify-between px-4 py-3">
               <div className="flex items-center gap-2">
@@ -188,11 +220,26 @@ export function SitemapCanvas({
           </div>
         </div>
 
+        {/* Sitemap Header Card */}
+        <div className="absolute" style={{ left: 60, top: 65, width: canvasWidth - 120 }}>
+          <div className="bg-card border border-border rounded-lg shadow-sm">
+            <div className="flex items-center justify-between px-4 py-2.5">
+              <div className="flex items-center gap-2">
+                <Map className="w-4 h-4 text-muted-foreground" />
+                <span className="font-medium text-sm">{project.sitemap.name}</span>
+              </div>
+              <button className="p-1 rounded hover:bg-muted transition-colors">
+                <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Connection Lines */}
         <SitemapConnections connections={connections} />
 
         {/* Page Cards */}
-        {allPages.map(({ page, position }) => (
+        {allPages.map(({ page, position, isHome }) => (
           <div
             key={page.id}
             className="absolute"
@@ -204,7 +251,7 @@ export function SitemapCanvas({
               selectedSectionId={selectedPageId === page.id ? selectedSectionId : undefined}
               onClick={() => onPageSelect(page.id)}
               onSectionClick={(sectionId) => onSectionSelect(page.id, sectionId)}
-              compact={page.id !== "page_home"}
+              compact={!isHome}
             />
           </div>
         ))}

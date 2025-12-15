@@ -10,6 +10,7 @@ import {
   mockProjectData,
   type ViewMode,
   type ProjectSection,
+  type ProjectPage,
 } from "@/components/project";
 
 export default function ProjectPage() {
@@ -49,8 +50,8 @@ export default function ProjectPage() {
   const selectedSection = useMemo((): { section: ProjectSection; pageName: string } | null => {
     if (!selectedPageId || !selectedSectionId) return null;
 
-    // Search through all pages
-    const findInPages = (pages: typeof mockProjectData.pages): { section: ProjectSection; pageName: string } | null => {
+    // Search through sitemap pages
+    const findInPages = (pages: ProjectPage[]): { section: ProjectSection; pageName: string } | null => {
       for (const page of pages) {
         if (page.id === selectedPageId) {
           const section = page.sections.find((s) => s.id === selectedSectionId);
@@ -64,7 +65,7 @@ export default function ProjectPage() {
       return null;
     };
 
-    return findInPages(mockProjectData.pages);
+    return findInPages(mockProjectData.sitemap.pages);
   }, [selectedPageId, selectedSectionId]);
 
   return (

@@ -34,15 +34,6 @@ export {
   type PromptMetadata,
 } from './prompt-loader';
 
-export type {
-  AIModel,
-  AIGenerationConfig,
-  TemplateVariables,
-  GenerateSitemapVariables,
-  GeneratePageVariables,
-  PromptLoader,
-  ExtractVariables,
-} from './types';
 
 // Re-export AI generation functions for convenience
 export { generateAiPage } from './generate-page';

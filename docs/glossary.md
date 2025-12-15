@@ -1,12 +1,12 @@
 # Glossary
 
-Domain-specific terminology for openbiz.
+Domain-specific terminology for sitedingo.
 
 ## Core Concepts
 
 ### Sitemap
 
-A hierarchical structure of pages for a website. In openbiz, sitemaps are:
+A hierarchical structure of pages for a website. In sitedingo, sitemaps are:
 - AI-generated based on business description
 - Editable by users
 - Used as the foundation for page content generation
@@ -100,7 +100,7 @@ Component library providing accessible, customizable UI primitives. Not a packag
 
 ### End User
 
-Person using openbiz to generate sitemaps and content for their website.
+Person using sitedingo to generate sitemaps and content for their website.
 
 ### Organization
 

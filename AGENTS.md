@@ -1,10 +1,10 @@
-# AGENTS.md - AI Agent Instructions for openbiz
+# AGENTS.md - AI Agent Instructions for sitedingo
 
 This document provides context and instructions for AI agents (Cursor, Copilot, Claude, etc.) working on this codebase.
 
 ## Project Overview
 
-**openbiz** is a SaaS tool similar to relume.io - an AI-powered sitemap and page structure/content builder. Users describe their business, and the AI generates:
+**sitedingo** is a SaaS tool similar to relume.io - an AI-powered sitemap and page structure/content builder. Users describe their business, and the AI generates:
 
 1. **Sitemaps** - Hierarchical page structures tailored to business type
 2. **Page Content** - Section-by-section content for each page

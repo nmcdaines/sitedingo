@@ -1,6 +1,6 @@
 # Prompt Engineering Guidelines
 
-This document outlines best practices for writing and maintaining AI prompts in openbiz.
+This document outlines best practices for writing and maintaining AI prompts in sitedingo.
 
 ## Core Principles
 

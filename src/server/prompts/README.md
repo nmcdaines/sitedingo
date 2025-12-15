@@ -1,6 +1,6 @@
 # AI Prompts Directory
 
-This directory contains all AI prompt definitions for openbiz.
+This directory contains all AI prompt definitions for sitedingo.
 
 ## Structure
 

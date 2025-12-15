@@ -1,8 +1,8 @@
-# openbiz Architecture
+# sitedingo Architecture
 
 ## Overview
 
-openbiz is an AI-powered sitemap and page structure builder. Users describe their business and receive:
+sitedingo is an AI-powered sitemap and page structure builder. Users describe their business and receive:
 
 1. **Generated Sitemap** - Hierarchical page structure tailored to business type
 2. **Page Content** - Section-by-section content for each page

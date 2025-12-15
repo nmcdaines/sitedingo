@@ -26,7 +26,7 @@ export interface ParsedPrompt {
  * Parses YAML frontmatter from markdown content
  * Supports both --- and +++ delimiters
  */
-function parseFrontmatter(content: string): { metadata: Record<string, any>; content: string } {
+function parseFrontmatter(content: string): { metadata: Record<string, unknown>; content: string } {
   const frontmatterRegex = /^(?:---|\+{3})\n([\s\S]*?)\n(?:---|\+{3})\n([\s\S]*)$/;
   const match = content.match(frontmatterRegex);
 
@@ -35,7 +35,7 @@ function parseFrontmatter(content: string): { metadata: Record<string, any>; con
   }
 
   const [, frontmatter, mainContent] = match;
-  const metadata: Record<string, any> = {};
+  const metadata: Record<string, unknown> = {};
 
   // Simple YAML parser for key-value pairs
   frontmatter.split('\n').forEach(line => {
@@ -88,110 +88,4 @@ export async function loadPrompt(promptPath: string): Promise<ParsedPrompt> {
     }
     throw error;
   }
-}
-
-/**
- * Template variable replacement with type safety
- * Uses double curly braces for variable interpolation: {{variableName}}
- * 
- * @param template - Template string with {{variable}} placeholders
- * @param variables - Object with variable values
- * @returns Interpolated string
- * 
- * @example
- * ```ts
- * const text = interpolate(
- *   'Hello {{name}}, you are {{age}} years old',
- *   { name: 'Alice', age: 30 }
- * );
- * // Result: 'Hello Alice, you are 30 years old'
- * ```
- */
-export function interpolate<T extends Record<string, any>>(
-  template: string,
-  variables: T
-): string {
-  return template.replace(/\{\{(\w+)\}\}/g, (match, key) => {
-    if (key in variables) {
-      return String(variables[key]);
-    }
-    // Throw error if variable is missing
-    throw new Error(`Missing template variable: ${key}`);
-  });
-}
-
-/**
- * Type-safe prompt loader with variable interpolation
- * 
- * @param promptPath - Path to the prompt file
- * @param variables - Variables to interpolate into the prompt
- * @returns Parsed prompt with interpolated content
- * 
- * @example
- * ```ts
- * const prompt = await loadPromptWithVars('welcome.md', {
- *   userName: 'Alice',
- *   businessType: 'cafe'
- * });
- * ```
- */
-export async function loadPromptWithVars<T extends Record<string, any>>(
-  promptPath: string,
-  variables: T
-): Promise<ParsedPrompt> {
-  const prompt = await loadPrompt(promptPath);
-  
-  return {
-    ...prompt,
-    content: interpolate(prompt.content, variables),
-  };
-}
-
-/**
- * Synchronous version of loadPrompt for cases where async is not needed
- * Caches loaded prompts for performance
- */
-const promptCache = new Map<string, ParsedPrompt>();
-
-/**
- * Loads a prompt synchronously (uses cached version or throws if not preloaded)
- * Useful for hot paths where prompts should be preloaded at startup
- * 
- * @param promptPath - Path to the prompt file
- * @returns Cached parsed prompt
- */
-export function getPromptSync(promptPath: string): ParsedPrompt {
-  const cached = promptCache.get(promptPath);
-  if (!cached) {
-    throw new Error(
-      `Prompt not preloaded: ${promptPath}. Call preloadPrompt() first or use loadPrompt() for async loading.`
-    );
-  }
-  return cached;
-}
-
-/**
- * Preloads a prompt into the cache for synchronous access
- * 
- * @param promptPath - Path to the prompt file
- * 
- * @example
- * ```ts
- * // At app startup
- * await preloadPrompt('generate-sitemap/prompt.md');
- * 
- * // Later, in a hot path
- * const prompt = getPromptSync('generate-sitemap/prompt.md');
- * ```
- */
-export async function preloadPrompt(promptPath: string): Promise<void> {
-  const prompt = await loadPrompt(promptPath);
-  promptCache.set(promptPath, prompt);
-}
-
-/**
- * Clears the prompt cache (useful for testing or hot reloading)
- */
-export function clearPromptCache(): void {
-  promptCache.clear();
 }

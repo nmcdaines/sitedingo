@@ -1,12 +1,18 @@
 import { pgTable, pgEnum } from "drizzle-orm/pg-core";
 import { ulid } from "ulid";
 
+// Helper types for table builder
+type TableBuilder = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  varchar: (config: { length: number }) => any;
+};
+
 // Helper for ULID primary keys
-const ulidPrimaryKey = (t: any) =>
+const ulidPrimaryKey = (t: TableBuilder) =>
   t.varchar({ length: 26 }).primaryKey().$defaultFn(() => ulid());
 
 // Helper for ULID foreign keys
-const ulidForeignKey = (t: any) =>
+const ulidForeignKey = (t: TableBuilder) =>
   t.varchar({ length: 26 });
 
 // Enums
@@ -55,6 +61,7 @@ export const sitemaps = pgTable("sitemaps", (t) => ({
 export const pages = pgTable("pages", (t) => ({
   id: ulidPrimaryKey(t),
   sitemapId: ulidForeignKey(t).notNull().references(() => sitemaps.id, { onDelete: "cascade" }),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   parentId: ulidForeignKey(t).references((): any => pages.id, { onDelete: "cascade" }),
   name: t.varchar({ length: 255 }).notNull(),
   slug: t.varchar({ length: 255 }).notNull(),

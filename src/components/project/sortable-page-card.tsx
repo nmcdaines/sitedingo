@@ -1,10 +1,6 @@
 "use client";
 
 import { useSortable } from "@dnd-kit/sortable";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import {
@@ -73,7 +69,6 @@ export function SortablePageCard({
   };
 
   const Icon = page.icon ? iconMap[page.icon] : FileText;
-  const sectionIds = page.sections.map((s) => s.id);
 
   return (
     <div
@@ -81,34 +76,28 @@ export function SortablePageCard({
       style={isOverlay ? undefined : style}
       className={cn(
         "bg-card border border-border rounded-xl shadow-sm overflow-hidden",
-        "transition-colors hover:shadow-md",
+        "hover:shadow-md",
         isSelected && "ring-2 ring-primary",
         isDragging && "border-dashed border-primary/50 bg-primary/5",
-        isOverlay && "shadow-xl border-primary cursor-grabbing",
+        isOverlay && "shadow-xl border-primary",
         compact ? "w-[220px]" : "w-[260px]"
       )}
     >
-      {/* Page Header */}
+      {/* Page Header - entire header is draggable */}
       <div
-        onClick={onClick}
         className={cn(
-          "flex items-center justify-between px-2 py-2.5 bg-muted/50 border-b border-border cursor-pointer group",
-          "hover:bg-muted transition-colors"
+          "flex items-center justify-between px-2 py-2.5 bg-muted/50 border-b border-border",
+          "hover:bg-muted transition-colors",
+          isDraggable && "cursor-grab active:cursor-grabbing",
+          !isDraggable && "cursor-pointer"
         )}
+        onClick={!isDragging ? onClick : undefined}
+        {...(isDraggable ? { ...attributes, ...listeners } : {})}
       >
-        <div className="flex items-center gap-1">
-          {/* Drag Handle */}
+        <div className="flex items-center gap-1.5">
+          {/* Drag Handle Icon - visible when draggable */}
           {isDraggable && (
-            <button
-              className={cn(
-                "p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing",
-                "hover:bg-background text-muted-foreground"
-              )}
-              {...attributes}
-              {...listeners}
-            >
-              <GripVertical className="w-4 h-4" />
-            </button>
+            <GripVertical className="w-4 h-4 text-muted-foreground/50" />
           )}
           <Icon className="w-4 h-4 text-muted-foreground" />
           <span className={cn("font-medium", compact ? "text-sm" : "text-sm")}>
@@ -125,24 +114,22 @@ export function SortablePageCard({
         </button>
       </div>
 
-      {/* Sections with sortable context */}
+      {/* Sections - rendered directly, sortable context is handled by parent */}
       <div
         className={cn(
           "p-2 space-y-1.5 overflow-y-auto",
           compact ? "max-h-[220px]" : "max-h-[380px]"
         )}
       >
-        <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
-          {page.sections.map((section) => (
-            <SortableSectionCard
-              key={section.id}
-              section={section}
-              isSelected={selectedSectionId === section.id}
-              onClick={() => onSectionClick?.(section.id)}
-              compact={compact}
-            />
-          ))}
-        </SortableContext>
+        {page.sections.map((section) => (
+          <SortableSectionCard
+            key={section.id}
+            section={section}
+            isSelected={selectedSectionId === section.id}
+            onClick={() => onSectionClick?.(section.id)}
+            compact={compact}
+          />
+        ))}
       </div>
     </div>
   );

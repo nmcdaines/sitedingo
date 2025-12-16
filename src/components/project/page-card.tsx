@@ -12,7 +12,7 @@ import {
   Image,
   Star,
 } from "lucide-react";
-import { SectionCard } from "./section-card";
+import { SortableSectionCard } from "./sortable-section-card";
 import type { ProjectPage, PageIcon } from "./types";
 
 const iconMap: Record<PageIcon, React.ComponentType<{ className?: string }>> = {
@@ -85,7 +85,7 @@ export function PageCard({
         )}
       >
         {page.sections.map((section) => (
-          <SectionCard
+          <SortableSectionCard
             key={section.id}
             section={section}
             isSelected={selectedSectionId === section.id}

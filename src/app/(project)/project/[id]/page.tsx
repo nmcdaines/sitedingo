@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -17,7 +17,7 @@ import {
   arrayMove,
   SortableContext,
   verticalListSortingStrategy,
-  rectSortingStrategy,
+  horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import {
   ProjectHeader,
@@ -33,19 +33,21 @@ import {
 import { SortablePageCard } from "@/components/project/sortable-page-card";
 import { SortableSectionCard } from "@/components/project/sortable-section-card";
 import { SitemapConnections } from "@/components/project/connection-line";
+import { PageCard } from "@/components/project/page-card";
 import { LayoutGrid, MoreHorizontal, Map } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Calculate positions for pages based on their order
 function calculatePagePositions(data: ProjectData): { 
-  pages: { page: ProjectPageType; x: number; y: number; isHome: boolean }[];
+  homePage: { page: ProjectPageType; x: number; y: number } | null;
+  childPages: { page: ProjectPageType; x: number; y: number }[];
   connections: { from: { x: number; y: number }; to: { x: number; y: number } }[];
   canvasWidth: number;
 } {
   const homePage = data.sitemap.pages[0];
-  if (!homePage) return { pages: [], connections: [], canvasWidth: 1400 };
+  if (!homePage) return { homePage: null, childPages: [], connections: [], canvasWidth: 1400 };
 
-  const pages: { page: ProjectPageType; x: number; y: number; isHome: boolean }[] = [];
+  const childPages: { page: ProjectPageType; x: number; y: number }[] = [];
   const connections: { from: { x: number; y: number }; to: { x: number; y: number } }[] = [];
 
   const homeWidth = 260;
@@ -57,8 +59,6 @@ function calculatePagePositions(data: ProjectData): {
   const totalChildrenWidth = childCount > 0 ? (childCount - 1) * childSpacing + childWidth : 0;
   const homeX = childCount > 0 ? (totalChildrenWidth / 2) - (homeWidth / 2) + 40 : 400;
   const homeY = 100;
-  
-  pages.push({ page: homePage, x: homeX, y: homeY, isHome: true });
 
   // Position children in a row
   if (homePage.children) {
@@ -66,7 +66,7 @@ function calculatePagePositions(data: ProjectData): {
       const childX = 40 + index * childSpacing;
       const childY = 580;
       
-      pages.push({ page: child, x: childX, y: childY, isHome: false });
+      childPages.push({ page: child, x: childX, y: childY });
       
       // Add connection from home to child
       connections.push({
@@ -82,7 +82,12 @@ function calculatePagePositions(data: ProjectData): {
     1400
   );
 
-  return { pages, connections, canvasWidth };
+  return { 
+    homePage: { page: homePage, x: homeX, y: homeY },
+    childPages, 
+    connections, 
+    canvasWidth 
+  };
 }
 
 export default function ProjectPage() {
@@ -106,16 +111,19 @@ export default function ProjectPage() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
+        distance: 8,
       },
     })
   );
 
   // Calculate layout based on current data
-  const { pages: allPages, connections, canvasWidth } = calculatePagePositions(projectData);
+  const { homePage, childPages, connections, canvasWidth } = calculatePagePositions(projectData);
 
-  // Get IDs for sortable contexts
-  const childPageIds = projectData.sitemap.pages[0]?.children?.map(p => p.id) || [];
+  // Get IDs for sortable contexts (memoized to prevent unnecessary re-renders)
+  const childPageIds = useMemo(
+    () => projectData.sitemap.pages[0]?.children?.map(p => p.id) ?? [],
+    [projectData.sitemap.pages]
+  );
 
   const handleZoomIn = useCallback(() => {
     setZoom((prev) => Math.min(prev + 10, 200));
@@ -172,30 +180,18 @@ export default function ProjectPage() {
     setIsPanning(false);
   }, []);
 
-  // Determine if an ID is a page or section
-  const getItemType = useCallback((id: string): "page" | "section" | null => {
-    const homePage = projectData.sitemap.pages[0];
-    if (!homePage) return null;
-    
-    const allPagesList = [homePage, ...(homePage.children || [])];
-    
-    if (allPagesList.some(p => p.id === id)) return "page";
-    
-    for (const page of allPagesList) {
-      if (page.sections.some(s => s.id === id)) return "section";
-    }
-    
-    return null;
-  }, [projectData]);
-
   // Drag handlers
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const id = event.active.id as string;
-    const type = getItemType(id);
-    
     setActiveId(id);
-    setDragType(type);
-  }, [getItemType]);
+    
+    // Determine type inline to avoid dependency issues
+    if (childPageIds.includes(id)) {
+      setDragType("page");
+    } else {
+      setDragType("section");
+    }
+  }, [childPageIds]);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
@@ -212,14 +208,14 @@ export default function ProjectPage() {
       // Reorder child pages
       setProjectData((prev) => {
         const newData = JSON.parse(JSON.stringify(prev)) as ProjectData;
-        const homePage = newData.sitemap.pages[0];
+        const home = newData.sitemap.pages[0];
         
-        if (homePage.children) {
-          const oldIndex = homePage.children.findIndex(p => p.id === active.id);
-          const newIndex = homePage.children.findIndex(p => p.id === over.id);
+        if (home.children) {
+          const oldIndex = home.children.findIndex(p => p.id === active.id);
+          const newIndex = home.children.findIndex(p => p.id === over.id);
           
           if (oldIndex !== -1 && newIndex !== -1) {
-            homePage.children = arrayMove(homePage.children, oldIndex, newIndex);
+            home.children = arrayMove(home.children, oldIndex, newIndex);
           }
         }
         
@@ -229,9 +225,10 @@ export default function ProjectPage() {
       // Handle section reordering within a page
       setProjectData((prev) => {
         const newData = JSON.parse(JSON.stringify(prev)) as ProjectData;
-        const homePage = newData.sitemap.pages[0];
-        const allPagesList = [homePage, ...(homePage.children || [])];
+        const home = newData.sitemap.pages[0];
+        const allPagesList = [home, ...(home.children || [])];
         
+        // Find which page contains both sections (they must be in the same page)
         for (const page of allPagesList) {
           const oldIndex = page.sections.findIndex(s => s.id === active.id);
           const newIndex = page.sections.findIndex(s => s.id === over.id);
@@ -276,19 +273,19 @@ export default function ProjectPage() {
 
   // Find active drag item for overlay
   const getActiveDragItem = (): { type: "page" | "section"; item: ProjectPageType | ProjectSection } | null => {
-    if (!activeId) return null;
+    if (!activeId || !dragType) return null;
     
-    const homePage = projectData.sitemap.pages[0];
-    if (!homePage) return null;
+    if (dragType === "page") {
+      const page = childPages.find(cp => cp.page.id === activeId)?.page;
+      if (page) return { type: "page", item: page };
+    }
     
-    const pages = [homePage, ...(homePage.children || [])];
-    
-    const page = pages.find(p => p.id === activeId);
-    if (page) return { type: "page", item: page };
-    
-    for (const p of pages) {
-      const section = p.sections.find(s => s.id === activeId);
-      if (section) return { type: "section", item: section };
+    if (dragType === "section") {
+      const allPagesList = [homePage?.page, ...childPages.map(cp => cp.page)].filter(Boolean) as ProjectPageType[];
+      for (const page of allPagesList) {
+        const section = page.sections.find(s => s.id === activeId);
+        if (section) return { type: "section", item: section };
+      }
     }
     
     return null;
@@ -385,9 +382,34 @@ export default function ProjectPage() {
                 {/* Connection Lines */}
                 <SitemapConnections connections={connections} />
 
-                {/* Child Pages - Sortable horizontally */}
-                <SortableContext items={childPageIds} strategy={rectSortingStrategy}>
-                  {allPages.map(({ page, x, y, isHome }) => (
+                {/* Home Page (not draggable, but sections are sortable) */}
+                {homePage && (
+                  <div
+                    style={{ 
+                      position: "absolute", 
+                      left: homePage.x, 
+                      top: homePage.y,
+                    }}
+                  >
+                    <SortableContext 
+                      items={homePage.page.sections.map(s => s.id)} 
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <PageCard
+                        page={homePage.page}
+                        isSelected={selectedPageId === homePage.page.id}
+                        selectedSectionId={selectedPageId === homePage.page.id ? selectedSectionId : undefined}
+                        onClick={() => handlePageSelect(homePage.page.id)}
+                        onSectionClick={(sectionId) => handleSectionSelect(homePage.page.id, sectionId)}
+                        compact={false}
+                      />
+                    </SortableContext>
+                  </div>
+                )}
+
+                {/* Child Pages - Sortable */}
+                <SortableContext items={childPageIds} strategy={horizontalListSortingStrategy}>
+                  {childPages.map(({ page, x, y }) => (
                     <div
                       key={page.id}
                       style={{ 
@@ -397,7 +419,6 @@ export default function ProjectPage() {
                         transition: activeId === page.id ? 'none' : 'left 0.3s ease, top 0.3s ease',
                       }}
                     >
-                      {/* Each page has its own sortable context for sections */}
                       <SortableContext 
                         items={page.sections.map(s => s.id)} 
                         strategy={verticalListSortingStrategy}
@@ -408,8 +429,8 @@ export default function ProjectPage() {
                           selectedSectionId={selectedPageId === page.id ? selectedSectionId : undefined}
                           onClick={() => handlePageSelect(page.id)}
                           onSectionClick={(sectionId) => handleSectionSelect(page.id, sectionId)}
-                          compact={!isHome}
-                          isDraggable={!isHome} // Only child pages can be reordered
+                          compact={true}
+                          isDraggable={true}
                         />
                       </SortableContext>
                     </div>

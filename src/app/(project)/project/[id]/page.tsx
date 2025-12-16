@@ -189,35 +189,40 @@ export default function ProjectPage() {
   }, [getItemType, pagePositions]);
 
   const handleDragMove = useCallback((event: DragMoveEvent) => {
-    if (dragType !== "page" || !activeId || !initialPagePos.current) return;
+    const currentInitialPos = initialPagePos.current;
+    if (dragType !== "page" || !activeId || !currentInitialPos) return;
     
     // Update page position in real-time during drag
     const { delta } = event;
     const scale = zoom / 100;
+    const newX = currentInitialPos.x + delta.x / scale;
+    const newY = currentInitialPos.y + delta.y / scale;
     
     setPagePositions(prev => ({
       ...prev,
-      [activeId]: {
-        x: initialPagePos.current!.x + delta.x / scale,
-        y: initialPagePos.current!.y + delta.y / scale,
-      },
+      [activeId]: { x: newX, y: newY },
     }));
   }, [dragType, activeId, zoom]);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over, delta } = event;
     
-    if (dragType === "page" && activeId && initialPagePos.current) {
+    // Capture values before any state updates
+    const currentDragType = dragType;
+    const currentActiveId = activeId;
+    const currentInitialPos = initialPagePos.current;
+    
+    if (currentDragType === "page" && currentActiveId && currentInitialPos) {
       // Finalize page position
       const scale = zoom / 100;
+      const newX = currentInitialPos.x + delta.x / scale;
+      const newY = currentInitialPos.y + delta.y / scale;
+      
       setPagePositions(prev => ({
         ...prev,
-        [activeId]: {
-          x: initialPagePos.current!.x + delta.x / scale,
-          y: initialPagePos.current!.y + delta.y / scale,
-        },
+        [currentActiveId]: { x: newX, y: newY },
       }));
-    } else if (dragType === "section" && over && active.id !== over.id) {
+    } else if (currentDragType === "section" && over && active.id !== over.id) {
       // Handle section reordering
       setProjectData((prev) => {
         const newData = JSON.parse(JSON.stringify(prev)) as ProjectData;

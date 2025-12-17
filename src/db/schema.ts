@@ -4,7 +4,6 @@ import { pgTable } from "drizzle-orm/pg-core";
 export const teams = pgTable("teams", (t) => ({
   id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
   name: t.varchar({ length: 255 }).notNull(),
-  slug: t.varchar({ length: 255 }).notNull().unique(),
   createdAt: t.timestamp().notNull().defaultNow(),
   updatedAt: t.timestamp().notNull().defaultNow(),
 }));

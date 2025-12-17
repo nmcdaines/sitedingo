@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "add-component": "bunx --bun shadcn@latest add",
-    "osv": "osv-scanner scan -L bun.lock"
+    "osv": "osv-scanner scan -L bun.lock",
+    "db": "drizzle-kit"
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.80",
@@ -20,7 +21,6 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^1.0.0-beta.2-6565b14",
-    "ulid": "^2.3.0",
     "elysia": "^1.4.18",
     "lucide-react": "^0.555.0",
     "next": "16.0.7",

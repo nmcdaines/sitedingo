@@ -1,20 +1,8 @@
-import { pgTable, pgEnum } from "drizzle-orm/pg-core";
-import { ulid } from "ulid";
-
-// Helper for ULID primary keys
-const ulidPrimaryKey = (t: any) =>
-  t.varchar({ length: 26 }).primaryKey().$defaultFn(() => ulid());
-
-// Helper for ULID foreign keys
-const ulidForeignKey = (t: any) =>
-  t.varchar({ length: 26 });
-
-// Enums
-export const teamRoleEnum = pgEnum("team_role", ["owner", "admin", "member"]);
+import { pgTable } from "drizzle-orm/pg-core";
 
 // Teams
 export const teams = pgTable("teams", (t) => ({
-  id: ulidPrimaryKey(t),
+  id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
   name: t.varchar({ length: 255 }).notNull(),
   slug: t.varchar({ length: 255 }).notNull().unique(),
   createdAt: t.timestamp().notNull().defaultNow(),
@@ -23,17 +11,17 @@ export const teams = pgTable("teams", (t) => ({
 
 // Team Members (links Clerk users to teams)
 export const teamMembers = pgTable("team_members", (t) => ({
-  id: ulidPrimaryKey(t),
-  teamId: ulidForeignKey(t).notNull().references(() => teams.id, { onDelete: "cascade" }),
-  userId: t.varchar({ length: 255 }).notNull(), // Clerk user ID
-  role: teamRoleEnum().notNull().default("member"),
+  id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
+  teamId: t.integer().notNull().references(() => teams.id, { onDelete: "cascade" }),
+  userId: t.integer().notNull(), // Clerk user ID
+  role: t.varchar({ enum: ["owner", "admin", "member"] }).notNull().default("member"),
   createdAt: t.timestamp().notNull().defaultNow(),
 }));
 
 // Projects
 export const projects = pgTable("projects", (t) => ({
-  id: ulidPrimaryKey(t),
-  teamId: ulidForeignKey(t).notNull().references(() => teams.id, { onDelete: "cascade" }),
+  id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
+  teamId: t.integer().notNull().references(() => teams.id, { onDelete: "cascade" }),
   name: t.varchar({ length: 255 }).notNull(),
   description: t.text(),
   createdAt: t.timestamp().notNull().defaultNow(),
@@ -42,20 +30,19 @@ export const projects = pgTable("projects", (t) => ({
 
 // Sitemaps
 export const sitemaps = pgTable("sitemaps", (t) => ({
-  id: ulidPrimaryKey(t),
-  projectId: ulidForeignKey(t).notNull().references(() => projects.id, { onDelete: "cascade" }),
+  id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
+  projectId: t.integer().notNull().references(() => projects.id, { onDelete: "cascade" }),
   name: t.varchar({ length: 255 }).notNull(),
   description: t.text(),
-  isActive: t.boolean().notNull().default(false),
   createdAt: t.timestamp().notNull().defaultNow(),
   updatedAt: t.timestamp().notNull().defaultNow(),
 }));
 
 // Pages (flat list with parentId for tree structure)
 export const pages = pgTable("pages", (t) => ({
-  id: ulidPrimaryKey(t),
-  sitemapId: ulidForeignKey(t).notNull().references(() => sitemaps.id, { onDelete: "cascade" }),
-  parentId: ulidForeignKey(t).references((): any => pages.id, { onDelete: "cascade" }),
+  id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
+  sitemapId: t.integer().notNull().references(() => sitemaps.id, { onDelete: "cascade" }),
+  parentId: t.integer(), // Self-reference to pages.id
   name: t.varchar({ length: 255 }).notNull(),
   slug: t.varchar({ length: 255 }).notNull(),
   description: t.text(),
@@ -66,8 +53,8 @@ export const pages = pgTable("pages", (t) => ({
 
 // Sections (belong to pages, contain component type + metadata)
 export const sections = pgTable("sections", (t) => ({
-  id: ulidPrimaryKey(t),
-  pageId: ulidForeignKey(t).notNull().references(() => pages.id, { onDelete: "cascade" }),
+  id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
+  pageId: t.integer().notNull().references(() => pages.id),
   componentType: t.varchar({ length: 100 }).notNull(),
   name: t.varchar({ length: 255 }),
   metadata: t.jsonb().notNull().default({}),

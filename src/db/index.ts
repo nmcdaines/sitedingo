@@ -1,4 +1,4 @@
-import { drizzle } from "drizzle-orm/bun-sql/postgres";
+import { drizzle } from 'drizzle-orm/neon-http';
 import { relations } from "@/db/relations";
 
 export const db = drizzle(process.env.DATABASE_URL!, { relations });

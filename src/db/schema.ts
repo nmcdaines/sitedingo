@@ -4,6 +4,7 @@ import { pgTable } from "drizzle-orm/pg-core";
 export const teams = pgTable("teams", (t) => ({
   id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
   name: t.varchar({ length: 255 }).notNull(),
+  slug: t.varchar({ length: 255 }).notNull().unique(),
   createdAt: t.timestamp().notNull().defaultNow(),
   updatedAt: t.timestamp().notNull().defaultNow(),
 }));
@@ -53,7 +54,7 @@ export const pages = pgTable("pages", (t) => ({
 // Sections (belong to pages, contain component type + metadata)
 export const sections = pgTable("sections", (t) => ({
   id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
-  pageId: t.integer().notNull().references(() => pages.id),
+  pageId: t.integer().notNull().references(() => pages.id, { onDelete: "cascade" }),
   componentType: t.varchar({ length: 100 }).notNull(),
   name: t.varchar({ length: 255 }),
   metadata: t.jsonb().notNull().default({}),

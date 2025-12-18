@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { client } from "@/lib/client";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import { Suspense } from "react";
 
 function useListProjectsQuery() {
@@ -37,9 +38,11 @@ function ProjectsList() {
             <div key={project.id} style={{ marginBottom: '1rem' }}>
               <h2>{project.name}</h2>
               <p>{project.description}</p>
-              <Button>
-                View Project
-              </Button>
+              <Link href={`/project/${project.id}`}>
+                <Button>
+                  View Project
+                </Button>
+              </Link>
             </div>
           ))
           : <p>No projects found.</p>

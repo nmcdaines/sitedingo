@@ -1,7 +1,26 @@
 import { Elysia, t } from 'elysia'
 import { db, schema } from '@/db';
+import { generateSitemapWorkflow } from '../workflows/generate-sitemap';
 
 export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Projects"] })
+  // Get a project
+  .get("/:id", async ({ params }) => {
+    console.log('Fetching project with id:', params.id);
+    return await db.query.projects.findFirst({
+      where: {
+        id: Number(params.id),
+      },
+      with: {
+        sitemaps: {
+          with: {
+            pages: true
+          }
+        }
+      }
+    })
+  })
+
+  // List all projects
   .get("", async () => {
     return await db.query.projects.findMany({
       where: {
@@ -9,9 +28,8 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
       }
     })
   })
-  .get("/:id", async () => {
 
-  })
+  // Create a project
   .post("", async ({ body }) => {
     const project = await db.insert(schema.projects).values({
       teamId: 1,
@@ -20,6 +38,8 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
     }).returning().then(res => res[0]);
 
     if (!project) { throw new Error('Not created!'); }
+
+    await generateSitemapWorkflow(project.id);
 
     return {
       id: project.id,
@@ -33,3 +53,7 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
     }),
   })
 
+  // Edit a project
+  .put("/:id", async () => {
+
+  })

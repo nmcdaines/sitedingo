@@ -6,7 +6,7 @@ export default function Home() {
   return (
     <form
       action={async (formData) => {
-        const project = await client.api.project.post({
+        const project = await client.api.projects.post({
           name: formData.get('name') as string,
           description: formData.get('description') as string,
         });

@@ -9,7 +9,7 @@ function useListProjectsQuery() {
   const query = useSuspenseQuery({
     queryKey: ['projects'],
     queryFn: async () => {
-      return client.api.project.get().then(res => res.data);
+      return client.api.projects.get().then(res => res.data);
     }
   })
   return [query.data, query] as const;

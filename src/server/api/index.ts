@@ -1,6 +1,7 @@
-import { Elysia, t } from 'elysia'
+import { Elysia } from 'elysia'
 import { openapi } from '@elysiajs/openapi'
-import { db, schema } from '@/db';
+
+import { ProjectController } from './projects';
 
 import { generateAiSitemap } from '../prompts/generate-sitemap';
 import { generateAiPage } from '../prompts/generate-page';
@@ -26,6 +27,7 @@ const app = new Elysia({ prefix: "/api" })
       }
     }
   }))
+  .use(ProjectController)
   .get("", () => "SiteDingo API")
   .get("/sitemap", async () => {
     const result = await generateAiSitemap(prompt);
@@ -42,33 +44,6 @@ const app = new Elysia({ prefix: "/api" })
         message: error instanceof Error ? error.message : 'Unknown error'
       }, null, 2)
     }
-  })
-  .get("/project", async () => {
-    return await db.query.projects.findMany({
-      where: {
-        teamId: 1,
-      }
-    })
-  })
-  .post("/project", async ({ body }) => {
-    const project = await db.insert(schema.projects).values({
-      teamId: 1,
-      name: body.name,
-      description: body.description,
-    }).returning().then(res => res[0]);
-
-    if (!project) { throw new Error('Not created!'); }
-
-    return {
-      id: project.id,
-      name: project.name,
-      description: project.description,
-    }
-  }, {
-    body: t.Object({
-      name: t.String(),
-      description: t.String(),
-    }),
   })
 
 export default app;

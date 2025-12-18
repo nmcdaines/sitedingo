@@ -44,9 +44,6 @@ const app = new Elysia({ prefix: "/api" })
     }
   })
   .get("/project", async () => {
-
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
     return await db.query.projects.findMany({
       where: {
         teamId: 1,

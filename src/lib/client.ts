@@ -8,9 +8,5 @@ function getBaseURL() {
   return 'http://localhost:3000'
 }
 
-export const client = treaty<App>(getBaseURL(), {
-  fetch: {
-    cache: 'no-cache',
-  }
-})
+export const client = treaty<App>(getBaseURL())
 

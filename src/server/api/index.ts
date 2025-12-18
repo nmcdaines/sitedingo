@@ -1,10 +1,11 @@
-import { Elysia } from 'elysia'
+import { Elysia, t } from 'elysia'
 import { openapi } from '@elysiajs/openapi'
+import { db, schema } from '@/db';
 
 import { generateAiSitemap } from '../prompts/generate-sitemap';
 import { generateAiPage } from '../prompts/generate-page';
 
-let prompt =''
+let prompt = ''
 
 prompt = `Finn and Co is a cozy cafe in the heart of the blue mountains. They produce their own bread and source ingredients locally. Please generate a sitemap.`
 // prompt = `I'd like you to generate a sitemap for a personal resume site.`
@@ -16,31 +17,63 @@ prompt = `Finn and Co is a cozy cafe in the heart of the blue mountains. They pr
 
 
 const app = new Elysia({ prefix: "/api" })
-    .use(openapi({
-        path: '/docs',
-        documentation: {
-            info: {
-                title: "SiteDingo API",
-                version: "1.0.0",
-            }
-        }
-    }))
-    .get("", () => "SiteDingo API")
-    .get("/sitemap", async () => {
-        const result = await generateAiSitemap(prompt);
-        return JSON.stringify(result.object || '', null, 2)
+  .use(openapi({
+    path: '/docs',
+    documentation: {
+      info: {
+        title: "SiteDingo API",
+        version: "1.0.0",
+      }
+    }
+  }))
+  .get("", () => "SiteDingo API")
+  .get("/sitemap", async () => {
+    const result = await generateAiSitemap(prompt);
+    return JSON.stringify(result.object || '', null, 2)
+  })
+  .get("/page", async () => {
+    try {
+      const result = await generateAiPage('Our Story', prompt)
+      return JSON.stringify(result.object || '', null, 2)
+    } catch (error) {
+      console.error('API Error generating page:', error)
+      return JSON.stringify({
+        error: 'Failed to generate page',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      }, null, 2)
+    }
+  })
+  .get("/project", async () => {
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    return await db.query.projects.findMany({
+      where: {
+        teamId: 1,
+      }
     })
-    .get("/page", async () => {
-        try {
-            const result = await generateAiPage('Our Story', prompt)
-            return JSON.stringify(result.object || '', null, 2)
-        } catch (error) {
-            console.error('API Error generating page:', error)
-            return JSON.stringify({
-                error: 'Failed to generate page',
-                message: error instanceof Error ? error.message : 'Unknown error'
-            }, null, 2)
-        }
-    })
+  })
+  .post("/project", async ({ body }) => {
+    const project = await db.insert(schema.projects).values({
+      teamId: 1,
+      name: body.name,
+      description: body.description,
+    }).returning().then(res => res[0]);
+
+    if (!project) { throw new Error('Not created!'); }
+
+    return {
+      id: project.id,
+      name: project.name,
+      description: project.description,
+    }
+  }, {
+    body: t.Object({
+      name: t.String(),
+      description: t.String(),
+    }),
+  })
 
 export default app;
+
+export type App = typeof app;

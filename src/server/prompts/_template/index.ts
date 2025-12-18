@@ -37,7 +37,7 @@ ${input.context ? `Context: ${input.context}` : ''}
     model: systemPrompt.metadata.model || 'google/gemini-2.5-flash',
     system: systemPrompt.content,
     prompt: userPrompt,
-    maxTokens: systemPrompt.metadata.maxTokens,
+    maxOutputTokens: systemPrompt.metadata.maxTokens,
     temperature: systemPrompt.metadata.temperature,
   });
 
@@ -60,7 +60,7 @@ ${input.context ? `Context: ${input.context}` : ''}
     system: systemPrompt.content,
     prompt: userPrompt,
     schema: outputSchema,
-    maxTokens: systemPrompt.metadata.maxTokens,
+    maxOutputTokens: systemPrompt.metadata.maxTokens,
   });
 
   return result;

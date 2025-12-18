@@ -3,8 +3,8 @@ import { defineRelations } from "drizzle-orm";
 
 export const relations = defineRelations(schema, (r) => ({
   teams: {
-    members: r.many.teamMembers,
-    projects: r.many.projects,
+    members: r.many.teamMembers(),
+    projects: r.many.projects(),
   },
   teamMembers: {
     team: r.one.teams({
@@ -17,14 +17,14 @@ export const relations = defineRelations(schema, (r) => ({
       from: r.projects.teamId,
       to: r.teams.id,
     }),
-    sitemaps: r.many.sitemaps,
+    sitemaps: r.many.sitemaps(),
   },
   sitemaps: {
     project: r.one.projects({
       from: r.sitemaps.projectId,
       to: r.projects.id,
     }),
-    pages: r.many.pages,
+    pages: r.many.pages(),
   },
   pages: {
     sitemap: r.one.sitemaps({
@@ -39,7 +39,7 @@ export const relations = defineRelations(schema, (r) => ({
       from: r.pages.id,
       to: r.pages.parentId,
     }),
-    sections: r.many.sections,
+    sections: r.many.sections(),
   },
   sections: {
     page: r.one.pages({

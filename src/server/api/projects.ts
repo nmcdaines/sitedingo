@@ -1,11 +1,17 @@
 import { Elysia, t } from 'elysia'
 import { db, schema } from '@/db';
 import { generateSitemapWorkflow } from '../workflows/generate-sitemap';
+import { clerkPlugin } from 'elysia-clerk';
 
 export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Projects"] })
+  .use(clerkPlugin({
+    publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  }))
+
   // Get a project
-  .get("/:id", async ({ params }) => {
-    console.log('Fetching project with id:', params.id);
+  .get("/:id", async ({ auth, params }) => {
+    let user = auth()
+    console.log('Clerk user', user.userId);
     return await db.query.projects.findFirst({
       where: {
         id: Number(params.id),

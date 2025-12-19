@@ -28,6 +28,7 @@
     "dotenv": "^17.2.3",
     "drizzle-orm": "^1.0.0-beta.2-ec83fa8",
     "elysia": "^1.4.18",
+    "elysia-clerk": "^0.13.2",
     "lucide-react": "^0.555.0",
     "next": "16.0.7",
     "react": "19.2.1",

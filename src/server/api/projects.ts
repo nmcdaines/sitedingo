@@ -1,29 +1,79 @@
-import { Elysia, t } from 'elysia'
+import { Elysia, status, t } from 'elysia'
 import { db, schema } from '@/db';
 import { generateSitemapWorkflow } from '../workflows/generate-sitemap';
-import { clerkPlugin } from 'elysia-clerk';
+import { requireAuthenticated } from './helpers/auth';
 
 export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Projects"] })
-  .use(clerkPlugin({
-    publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-  }))
+  .use(requireAuthenticated)
+  // .use(clerkPlugin({
+  //   publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  // }))
 
   // Get a project
-  .get("/:id", async ({ auth, params }) => {
-    let user = auth()
-    console.log('Clerk user', user.userId);
-    return await db.query.projects.findFirst({
+  .get("/:id", async ({ user, params }) => {
+    // const user = auth()
+    
+
+    console.log('Clerk user', user.clerkUserId);
+    const project = await db.query.projects.findFirst({
       where: {
         id: Number(params.id),
+        teamId: {
+          // in: user.team
+          // in: 
+        }
       },
       with: {
         sitemaps: {
           with: {
-            pages: true
+            pages: {
+              with: {
+                sections: true,
+              }
+            }
           }
         }
       }
     })
+
+    if (!project) return status(404, undefined)
+
+    return {
+      ...project
+    }
+  }, {
+    response: {
+      404: t.Undefined(),
+      200: t.Object({
+        id: t.Number(),
+        name: t.String(),
+        description: t.Nullable(t.String()),
+  
+        sitemaps: t.Array(t.Object({
+          id: t.Number(),
+          name: t.String(),
+          description: t.Nullable(t.String()),
+
+          pages: t.Array(t.Object({
+            id: t.Number(),
+            name: t.String(),
+            slug: t.String(),
+            description: t.Nullable(t.String()),
+            sortOrder: t.Number(),
+
+            sections: t.Array(t.Object({
+              id: t.Number(),
+              componentType: t.String(),
+              name: t.String(),
+              metadata: t.Any(),
+              sortOrder: t.Number(),
+            }))
+          }))
+        }))
+      })
+    }
+    
+    
   })
 
   // List all projects

@@ -42,6 +42,9 @@ function ProjectsList({ projectId }: { projectId: string }) {
   const [project] = useGetProjectQuery(projectId)
   return (
     <pre>
+
+      
+
       {JSON.stringify(project, null, 2)}
     </pre>
   )

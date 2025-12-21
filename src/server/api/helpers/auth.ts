@@ -1,4 +1,4 @@
-import Elysia from "elysia";
+import { Elysia, status } from "elysia";
 import { clerkPlugin } from "elysia-clerk";
 
 export type User = {
@@ -12,14 +12,19 @@ export const requireAuthenticated = new Elysia({ name: 'require-authenticated' }
   }))
   .state('user', null as User | null)
   .resolve(async ({ auth }) => {
-    const user = auth()
+    const clerkAuth = auth()
 
-    if (!user.userId) throw new Error()
+    if (!clerkAuth.userId) {
+      throw status(401, {
+        error: 'Unauthorized',
+        message: 'Authentication required. Please sign in to access this resource.'
+      })
+    }
     
     return {
       user: {
-        id: 0,
-        clerkUserId: user.userId,
+        id: 0, // TODO: Look up user ID from database if needed
+        clerkId: clerkAuth.userId,
       }
     }
   })

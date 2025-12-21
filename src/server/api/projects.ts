@@ -14,7 +14,7 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
     // const user = auth()
     
 
-    console.log('Clerk user', user.clerkUserId);
+    console.log('Clerk user', user.clerkId);
     const project = await db.query.projects.findFirst({
       where: {
         id: Number(params.id),

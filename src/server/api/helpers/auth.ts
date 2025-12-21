@@ -47,7 +47,7 @@ export const requireAuthenticated = new Elysia({ name: 'require-authenticated' }
     }
     
     // Look up user in database with teams and roles
-    let user = await getUserWithRoles(clerkAuth.userId)
+    const user = await getUserWithRoles(clerkAuth.userId)
 
     if (!user) {
       // Create user on first login using transaction

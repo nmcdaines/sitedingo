@@ -45,6 +45,7 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
           description: t.Nullable(t.String()),
 
           pages: t.Array(t.Object({
+            parentId: t.Nullable(t.Number()),
             id: t.Number(),
             name: t.String(),
             slug: t.String(),
@@ -90,7 +91,7 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
     const project = await db.insert(schema.projects).values({
       // TODO: need to have a "current" team.
       teamId: user.teams[0].id,
-      
+
       name: body.name,
       description: body.description,
     }).returning().then(res => res[0]);

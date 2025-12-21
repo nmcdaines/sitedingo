@@ -1,5 +1,5 @@
 import { db, schema } from "@/db"
-import { generateAiSitemap } from "../prompts";
+import { generateAiSitemap, generateAiPage } from "../prompts";
 
 export async function generateSitemapWorkflow(projectId: number) {
   'use workflow'
@@ -36,7 +36,7 @@ async function populateSitemap(projectId: number, projectDescription: string) {
 
   let pageIndex = 0;
   for (const page of aiSitemap.object) {
-    await db.insert(schema.pages).values({
+    const pageRecord = await db.insert(schema.pages).values({
       sitemapId: sitemap.id,
       name: page.name,
       description: '',
@@ -46,12 +46,42 @@ async function populateSitemap(projectId: number, projectDescription: string) {
 
     console.log(`page added: `, page);
 
+    if (!pageRecord) {
+      throw new Error(`Unable to create page: ${page.name}`);
+    }
+
+    // Generate initial page content
+    await populatePage(pageRecord.id, page.name, projectDescription);
+
     pageIndex++;
   }
 }
 
-// async function populatePage(pageId: number) {
-//   'use step'
-// }
+async function populatePage(pageId: number, pageTitle: string, businessDescription: string) {
+  'use step'
+
+  const pageContent = await generateAiPage(pageTitle, businessDescription);
+
+  // Update page with generated description
+  // await db.update(schema.pages)
+  //   .set({ description: pageContent.object.description })
+  //   .where({ id: pageId });
+
+  // Create sections for the generated content
+  let sectionIndex = 0;
+  for (const section of pageContent.object.sections) {
+    await db.insert(schema.sections).values({
+      pageId,
+      componentType: 'text',
+      name: section.title,
+      metadata: { content: section.content },
+      sortOrder: sectionIndex,
+    });
+
+    sectionIndex++;
+  }
+
+  console.log(`Generated ${sectionIndex} sections for page: ${pageTitle}`);
+}
 
 

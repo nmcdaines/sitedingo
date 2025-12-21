@@ -2,6 +2,8 @@ import { Elysia } from 'elysia'
 import { openapi } from '@elysiajs/openapi'
 
 import { ProjectController } from './projects';
+import { PagesController } from './pages';
+import { SectionsController } from './sections';
 
 import { generateAiSitemap } from '../prompts/generate-sitemap';
 import { generateAiPage } from '../prompts/generate-page';
@@ -28,6 +30,8 @@ const app = new Elysia({ prefix: "/api" })
     }
   }))
   .use(ProjectController)
+  .use(PagesController)
+  .use(SectionsController)
   .get("", () => "SiteDingo API")
   .get("/sitemap", async () => {
     const result = await generateAiSitemap(prompt);

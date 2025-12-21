@@ -1,5 +1,15 @@
 import { pgTable } from "drizzle-orm/pg-core";
 
+// Users (extends Clerk user with app-specific data)
+export const users = pgTable("users", (t) => ({
+  id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
+  clerkId: t.varchar({ length: 255 }).notNull().unique(),
+  email: t.varchar({ length: 255 }), // Cached from Clerk for faster queries
+  name: t.varchar({ length: 255 }), // Cached from Clerk for faster queries
+  createdAt: t.timestamp().notNull().defaultNow(),
+  updatedAt: t.timestamp().notNull().defaultNow(),
+}));
+
 // Teams
 export const teams = pgTable("teams", (t) => ({
   id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -9,11 +19,11 @@ export const teams = pgTable("teams", (t) => ({
   updatedAt: t.timestamp().notNull().defaultNow(),
 }));
 
-// Team Members (links Clerk users to teams)
+// Team Members (links users to teams)
 export const teamMembers = pgTable("team_members", (t) => ({
   id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
   teamId: t.integer().notNull().references(() => teams.id, { onDelete: "cascade" }),
-  userId: t.integer().notNull(), // Clerk user ID
+  userId: t.integer().notNull().references(() => users.id, { onDelete: "cascade" }),
   role: t.varchar({ enum: ["owner", "admin", "member"] }).notNull().default("member"),
   createdAt: t.timestamp().notNull().defaultNow(),
 }));

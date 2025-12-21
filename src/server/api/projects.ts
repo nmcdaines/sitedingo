@@ -5,22 +5,14 @@ import { requireAuthenticated } from './helpers/auth';
 
 export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Projects"] })
   .use(requireAuthenticated)
-  // .use(clerkPlugin({
-  //   publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
-  // }))
 
   // Get a project
   .get("/:id", async ({ user, params }) => {
-    // const user = auth()
-    
-
-    console.log('Clerk user', user.clerkId);
     const project = await db.query.projects.findFirst({
       where: {
         id: Number(params.id),
         teamId: {
-          // in: user.team
-          // in: 
+          in: user.teams.map(team => team.id)
         }
       },
       with: {
@@ -36,14 +28,12 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
       }
     })
 
-    if (!project) return status(404, undefined)
+    if (!project) return status(404, { error: 'Project not found' })
 
-    return {
-      ...project
-    }
+    return project
   }, {
     response: {
-      404: t.Undefined(),
+      404: t.Object({ error: t.String() }),
       200: t.Object({
         id: t.Number(),
         name: t.String(),
@@ -77,18 +67,28 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
   })
 
   // List all projects
-  .get("", async () => {
+  .get("", async ({ user }) => {
     return await db.query.projects.findMany({
       where: {
-        teamId: 1,
+        teamId: {
+          in: user.teams.map(team => team.id)
+        }
       }
     })
+  }, {
+    response: {
+      200: t.Array(t.Object({
+        id: t.Number(),
+        name: t.String(),
+        description: t.Nullable(t.String()),
+      }))
+    }
   })
 
   // Create a project
-  .post("", async ({ body }) => {
+  .post("", async ({ user, body }) => {
     const project = await db.insert(schema.projects).values({
-      teamId: 1,
+      teamId: user.teams[0].id,
       name: body.name,
       description: body.description,
     }).returning().then(res => res[0]);

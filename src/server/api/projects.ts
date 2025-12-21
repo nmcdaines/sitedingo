@@ -88,7 +88,9 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
   // Create a project
   .post("", async ({ user, body }) => {
     const project = await db.insert(schema.projects).values({
+      // TODO: need to have a "current" team.
       teamId: user.teams[0].id,
+      
       name: body.name,
       description: body.description,
     }).returning().then(res => res[0]);

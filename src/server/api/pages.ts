@@ -76,6 +76,27 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
       return status(403, { error: 'Forbidden' })
     }
 
+    // Prevent a page from being its own parent
+    // Note: This check is for future pages, but we validate here for consistency
+    // The actual page ID will be generated, so we can't check against it yet
+    // But we validate that parentId is not the same as any existing page in the same sitemap
+    if (body.parentId) {
+      const parentPage = await db.query.pages.findFirst({
+        where: (pages, { eq, and }) => and(
+          eq(pages.id, body.parentId),
+          eq(pages.sitemapId, body.sitemapId)
+        )
+      })
+      if (!parentPage) {
+        return status(400, { error: 'Parent page not found' })
+      }
+      // Prevent root level nodes from being parents
+      // Root pages are those with slug "/" or "/home"
+      if (parentPage.slug === '/' || parentPage.slug === '/home') {
+        return status(400, { error: 'Root level pages cannot have children' })
+      }
+    }
+
     const page = await db.insert(schema.pages).values({
       sitemapId: body.sitemapId,
       parentId: body.parentId || null,
@@ -98,6 +119,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
       sortOrder: t.Number(),
     }),
     response: {
+      400: t.Object({ error: t.String() }),
       404: t.Object({ error: t.String() }),
       403: t.Object({ error: t.String() }),
       200: t.Object({
@@ -136,6 +158,25 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
       return status(403, { error: 'Forbidden' })
     }
 
+    // Prevent a page from being its own parent
+    if (body.parentId !== null && body.parentId === Number(params.id)) {
+      return status(400, { error: 'A page cannot be its own parent' })
+    }
+
+    // Prevent root level nodes from being parents
+    // Root pages are those with slug "/" or "/home"
+    if (body.parentId !== null) {
+      const parentPage = await db.query.pages.findFirst({
+        where: (pages, { eq, and }) => and(
+          eq(pages.id, body.parentId),
+          eq(pages.sitemapId, page.sitemapId)
+        )
+      })
+      if (parentPage && (parentPage.slug === '/' || parentPage.slug === '/home')) {
+        return status(400, { error: 'Root level pages cannot have children' })
+      }
+    }
+
     const updated = await db.update(schema.pages)
       .set({
         name: body.name,
@@ -161,6 +202,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
       sortOrder: t.Number(),
     }),
     response: {
+      400: t.Object({ error: t.String() }),
       404: t.Object({ error: t.String() }),
       403: t.Object({ error: t.String() }),
       200: t.Object({
@@ -235,6 +277,25 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
       return status(403, { error: 'Forbidden' })
     }
 
+    // Prevent a page from being its own parent
+    if (body.parentId !== null && body.parentId === Number(params.id)) {
+      return status(400, { error: 'A page cannot be its own parent' })
+    }
+
+    // Prevent root level nodes from being parents
+    // Root pages are those with slug "/" or "/home"
+    if (body.parentId !== null) {
+      const parentPage = await db.query.pages.findFirst({
+        where: (pages, { eq, and }) => and(
+          eq(pages.id, body.parentId),
+          eq(pages.sitemapId, page.sitemapId)
+        )
+      })
+      if (parentPage && (parentPage.slug === '/' || parentPage.slug === '/home')) {
+        return status(400, { error: 'Root level pages cannot have children' })
+      }
+    }
+
     // Update the page's parent and sort order
     await db.update(schema.pages)
       .set({
@@ -265,6 +326,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
       siblingIds: t.Nullable(t.Array(t.Number())),
     }),
     response: {
+      400: t.Object({ error: t.String() }),
       404: t.Object({ error: t.String() }),
       403: t.Object({ error: t.String() }),
       200: t.Object({ success: t.Boolean() })

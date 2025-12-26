@@ -190,6 +190,13 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
     return conns;
   }, [tree]);
 
+  // Layout constants (matching tree-utils.ts)
+  const LAYOUT = {
+    NODE_WIDTH: 280,
+    NODE_HEIGHT: 120,
+    VERTICAL_SPACING: 200,
+  } as const;
+
   // Generate empty space drop zones for re-ordering
   const dropZones = useMemo(() => {
     if (!activeId) return []; // Only show drop zones when dragging
@@ -250,49 +257,70 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
 
     // Generate drop zones for children of each node
     function generateChildDropZones(node: TreeNode) {
-      if (node.children.length === 0) return;
-      
-      const sortedChildren = [...node.children].sort((a, b) => a.sortOrder - b.sortOrder);
-      
-      // Drop zone before first child
-      zones.push({
-        id: `reorder-${node.id}-0`,
-        parentId: node.id,
-        position: 0,
-        x: sortedChildren[0].position.x - 200,
-        y: sortedChildren[0].position.y,
-        width: 150, // Larger width for easier targeting
-        height: sortedChildren[0].height,
-      });
-
-      // Drop zones between children
-      for (let i = 0; i < sortedChildren.length - 1; i++) {
-        const leftChild = sortedChildren[i];
-        const rightChild = sortedChildren[i + 1];
-        const midX = (leftChild.position.x + leftChild.width + rightChild.position.x) / 2;
-        
-        zones.push({
-          id: `reorder-${node.id}-${i + 1}`,
-          parentId: node.id,
-          position: i + 1,
-          x: midX - 75, // Centered, larger width
-          y: Math.max(leftChild.position.y, rightChild.position.y),
-          width: 150, // Larger width for easier targeting
-          height: Math.max(leftChild.height, rightChild.height),
-        });
+      // Skip root level nodes (pages with slug "/" or "/home" cannot have children)
+      const nodePage = localPages.find(p => p.id === node.id);
+      if (nodePage && (nodePage.slug === '/' || nodePage.slug === '/home')) {
+        // Still recurse to children if they exist
+        node.children.forEach(child => generateChildDropZones(child));
+        return;
       }
 
-      // Drop zone after last child
-      const lastChild = sortedChildren[sortedChildren.length - 1];
-      zones.push({
-        id: `reorder-${node.id}-${sortedChildren.length}`,
-        parentId: node.id,
-        position: sortedChildren.length,
-        x: lastChild.position.x + lastChild.width + 50,
-        y: lastChild.position.y,
-        width: 150, // Larger width for easier targeting
-        height: lastChild.height,
-      });
+      const sortedChildren = [...node.children].sort((a, b) => a.sortOrder - b.sortOrder);
+      
+      if (sortedChildren.length === 0) {
+        // If node has no children, create a drop zone below it for the first child
+        // Position it below the node, centered horizontally
+        const childY = node.position.y + node.height + LAYOUT.VERTICAL_SPACING;
+        zones.push({
+          id: `reorder-${node.id}-0`,
+          parentId: node.id,
+          position: 0,
+          x: node.position.x + (node.width / 2) - 75, // Centered below the node
+          y: childY,
+          width: 150,
+          height: LAYOUT.NODE_HEIGHT,
+        });
+      } else {
+        // Drop zone before first child
+        zones.push({
+          id: `reorder-${node.id}-0`,
+          parentId: node.id,
+          position: 0,
+          x: sortedChildren[0].position.x - 200,
+          y: sortedChildren[0].position.y,
+          width: 150, // Larger width for easier targeting
+          height: sortedChildren[0].height,
+        });
+
+        // Drop zones between children
+        for (let i = 0; i < sortedChildren.length - 1; i++) {
+          const leftChild = sortedChildren[i];
+          const rightChild = sortedChildren[i + 1];
+          const midX = (leftChild.position.x + leftChild.width + rightChild.position.x) / 2;
+          
+          zones.push({
+            id: `reorder-${node.id}-${i + 1}`,
+            parentId: node.id,
+            position: i + 1,
+            x: midX - 75, // Centered, larger width
+            y: Math.max(leftChild.position.y, rightChild.position.y),
+            width: 150, // Larger width for easier targeting
+            height: Math.max(leftChild.height, rightChild.height),
+          });
+        }
+
+        // Drop zone after last child
+        const lastChild = sortedChildren[sortedChildren.length - 1];
+        zones.push({
+          id: `reorder-${node.id}-${sortedChildren.length}`,
+          parentId: node.id,
+          position: sortedChildren.length,
+          x: lastChild.position.x + lastChild.width + 50,
+          y: lastChild.position.y,
+          width: 150, // Larger width for easier targeting
+          height: lastChild.height,
+        });
+      }
 
       // Recursively generate for grandchildren
       sortedChildren.forEach(child => generateChildDropZones(child));
@@ -312,6 +340,24 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
       </div>
     );
   }
+
+  // Prevent text selection during panning
+  React.useEffect(() => {
+    if (!isPanning) return;
+
+    const preventSelection = (e: Event) => {
+      e.preventDefault();
+    };
+
+    // Prevent text selection during panning
+    document.addEventListener('selectstart', preventSelection);
+    document.addEventListener('dragstart', preventSelection);
+    
+    return () => {
+      document.removeEventListener('selectstart', preventSelection);
+      document.removeEventListener('dragstart', preventSelection);
+    };
+  }, [isPanning]);
 
   // Use native event listener for better control over preventDefault
   React.useEffect(() => {
@@ -364,6 +410,7 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
     // Always allow panning with middle mouse button or Ctrl/Cmd + left click
     if (e.button === 1 || (e.button === 0 && e.ctrlKey)) {
       e.preventDefault();
+      e.stopPropagation();
       setIsPanning(true);
       setPanStart({ x: e.clientX, y: e.clientY });
       setMouseDownOnEmptySpace(false);
@@ -391,16 +438,21 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
       // Start panning if mouse moved more than 5 pixels (to avoid accidental panning on clicks)
       if (moveDistance > 5) {
         e.preventDefault();
+        e.stopPropagation();
         setIsPanning(true);
         setPanStart({ x: mouseDownPos.x, y: mouseDownPos.y });
       }
     }
     
     if (isPanning) {
+      e.preventDefault();
+      e.stopPropagation();
       // Convert screen pixel movement to SVG coordinate movement
       // Inverted: dragging right/down pans left/up (like grabbing the canvas)
-      const deltaX = -(e.clientX - panStart.x) / zoom;
-      const deltaY = -(e.clientY - panStart.y) / zoom;
+      // Pan speed is consistent regardless of zoom level for better UX
+      const panSpeed = 1.5;
+      const deltaX = -(e.clientX - panStart.x) * panSpeed;
+      const deltaY = -(e.clientY - panStart.y) * panSpeed;
       setPan({
         x: pan.x + deltaX,
         y: pan.y + deltaY,
@@ -425,33 +477,65 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
     const { active, over } = event;
     setActiveId(null);
 
-    if (!over) return;
+    if (!over) {
+      console.log('[DragEnd] No over target');
+      return;
+    }
 
     const activeData = active.data.current;
-    if (!activeData || activeData.type !== 'page') return;
+    if (!activeData || activeData.type !== 'page') {
+      console.log('[DragEnd] Invalid active data:', activeData);
+      return;
+    }
 
     const draggedNode = activeData.node as TreeNode;
     const overId = over.id as string;
+    console.log('[DragEnd] Dragging page', draggedNode.id, 'over', overId);
 
     let updatedPages: Page[] = localPages;
 
     // Case 1: Dropped on a page node (nesting)
+    // Handle both 'drop-page-{id}' (droppable zone) and 'page-{id}' (draggable element)
+    let newParentId: number | null = null;
     if (overId.startsWith('drop-page-')) {
-      const newParentId = parseInt(overId.replace('drop-page-', ''));
+      newParentId = parseInt(overId.replace('drop-page-', ''));
+    } else if (overId.startsWith('page-')) {
+      // Collision detection picked up the draggable element instead of droppable zone
+      newParentId = parseInt(overId.replace('page-', ''));
+    }
+
+    if (newParentId !== null) {
+      console.log('[DragEnd] Dropping on page node, newParentId:', newParentId);
       
       // Don't allow dropping on itself or its children
-      if (draggedNode.id === newParentId) return;
+      if (draggedNode.id === newParentId) {
+        console.log('[DragEnd] Cannot drop on itself');
+        return;
+      }
+      
+      // Don't allow dropping on a root level node (root nodes cannot have children)
+      // Root pages are those with slug "/" or "/home"
+      const newParentPage = localPages.find(p => p.id === newParentId);
+      if (newParentPage && (newParentPage.slug === '/' || newParentPage.slug === '/home')) {
+        console.log('[DragEnd] Cannot drop on root page');
+        return;
+      }
       
       // Check if dropping on a descendant
       function isDescendant(node: TreeNode, targetId: number): boolean {
         if (node.id === targetId) return true;
         return node.children.some(child => isDescendant(child, targetId));
       }
-      if (isDescendant(draggedNode, newParentId)) return;
+      if (isDescendant(draggedNode, newParentId)) {
+        console.log('[DragEnd] Cannot drop on descendant');
+        return;
+      }
 
       // Get siblings of the new parent to calculate sort order
       const newSiblings = getSiblings(localPages, newParentId, draggedNode.id);
       const newSortOrder = newSiblings.length > 0 ? Math.max(...newSiblings.map(s => s.sortOrder)) + 1 : 0;
+
+      console.log('[DragEnd] Updating page', draggedNode.id, 'to parent', newParentId, 'sortOrder', newSortOrder);
 
       // Update the page's parent and sort order
       updatedPages = localPages.map(page => {
@@ -472,6 +556,16 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
       const parentIdStr = match[1];
       const position = parseInt(match[2]);
       const targetParentId = parentIdStr === 'root' ? null : parseInt(parentIdStr);
+      
+      // Don't allow a page to be its own parent
+      if (targetParentId !== null && targetParentId === draggedNode.id) return;
+      
+      // Don't allow dropping on a root level node (root nodes cannot have children)
+      // Root pages are those with slug "/" or "/home"
+      if (targetParentId !== null) {
+        const targetParentPage = localPages.find(p => p.id === targetParentId);
+        if (targetParentPage && (targetParentPage.slug === '/' || targetParentPage.slug === '/home')) return;
+      }
       
       // Don't allow dropping on itself (if moving within same parent at same position)
       const draggedPage = localPages.find(p => p.id === draggedNode.id);
@@ -520,6 +614,19 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
       return;
     }
 
+    // Check if pages actually changed
+    const hasChanges = updatedPages.some((page, index) => {
+      const original = localPages[index];
+      return !original || page.id !== original.id || page.parentId !== original.parentId || page.sortOrder !== original.sortOrder;
+    }) || updatedPages.length !== localPages.length;
+
+    if (!hasChanges) {
+      console.log('[DragEnd] No changes to apply');
+      return;
+    }
+
+    console.log('[DragEnd] Applying changes, updated pages:', updatedPages.map(p => ({ id: p.id, parentId: p.parentId, sortOrder: p.sortOrder })));
+
     // Add to history
     const newHistory = history.slice(0, historyIndex + 1);
     newHistory.push(updatedPages);
@@ -540,13 +647,18 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
       const pageData = localPages.find(p => p.id === page.id);
       if (!pageData) throw new Error('Page not found');
       
-      return client.api.pages({ id: page.id.toString() }).put({
+      console.log('[SaveMutation] Saving page', page.id, 'with parentId', pageData.parentId, 'sortOrder', pageData.sortOrder);
+      
+      const result = await client.api.pages({ id: page.id.toString() }).put({
         name: pageData.name,
         slug: pageData.slug,
         description: pageData.description,
-        parentId: page.parentId,
-        sortOrder: page.sortOrder,
+        parentId: pageData.parentId,
+        sortOrder: pageData.sortOrder,
       });
+      
+      console.log('[SaveMutation] Save result:', result);
+      return result;
     },
   });
 
@@ -559,8 +671,12 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
     if (isInitialMountRef.current) {
       isInitialMountRef.current = false;
       previousPagesRef.current = localPages;
+      console.log('[AutoSave] Skipping initial mount');
       return;
     }
+
+    console.log('[AutoSave] Checking for changes, localPages:', localPages.map(p => ({ id: p.id, parentId: p.parentId, sortOrder: p.sortOrder })));
+    console.log('[AutoSave] Previous pages:', previousPagesRef.current.map(p => ({ id: p.id, parentId: p.parentId, sortOrder: p.sortOrder })));
 
     // Find pages that actually changed
     const changedPages = localPages.filter(page => {
@@ -570,19 +686,31 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
       // Only save if parentId or sortOrder actually changed
       const hasChanges = page.parentId !== originalPage.parentId || 
                         page.sortOrder !== originalPage.sortOrder;
+      if (hasChanges) {
+        console.log('[AutoSave] Page', page.id, 'changed:', {
+          parentId: { from: originalPage.parentId, to: page.parentId },
+          sortOrder: { from: originalPage.sortOrder, to: page.sortOrder }
+        });
+      }
       return hasChanges;
     });
 
     // If no changes, don't save
     if (changedPages.length === 0) {
+      console.log('[AutoSave] No changes detected');
       previousPagesRef.current = localPages;
       return;
     }
 
+    console.log('[AutoSave] Found', changedPages.length, 'changed pages:', changedPages.map(p => p.id));
+
     // If already saving, skip (will be handled by next effect run)
     if (isSavingRef.current) {
+      console.log('[AutoSave] Already saving, skipping');
       return;
     }
+
+    console.log('[AutoSave] Starting save process');
 
     // Save immediately
     (async () => {
@@ -657,7 +785,12 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        style={{ cursor: isPanning ? 'grabbing' : 'grab', touchAction: 'none' }}
+        style={{ 
+          cursor: isPanning ? 'grabbing' : 'grab', 
+          touchAction: 'none',
+          userSelect: isPanning ? 'none' : 'auto',
+          WebkitUserSelect: isPanning ? 'none' : 'auto',
+        }}
       >
         {/* Toggle button for showing/hiding sections */}
         <Button

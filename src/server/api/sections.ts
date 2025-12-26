@@ -275,3 +275,4 @@ export const SectionsController = new Elysia({ prefix: "/sections", tags: ["Sect
     }
   })
 
+

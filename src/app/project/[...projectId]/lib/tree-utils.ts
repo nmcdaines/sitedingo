@@ -98,10 +98,18 @@ function calculateSubtreeWidth(node: TreeNode): number {
 
 /**
  * Calculates the height needed for a node including sections
+ * Matches the calculation in page-node.tsx:
+ * - Header: 60px
+ * - Each section: 50px
+ * - Gap between sections: 8px
+ * - mt-4 margin: 16px
  */
 function calculateNodeHeight(node: TreeNode): number {
-  const sectionsHeight = node.sections.length * LAYOUT.SECTION_SPACING;
-  return LAYOUT.NODE_HEIGHT + sectionsHeight;
+  const headerHeight = 60;
+  const sectionAreaHeight = node.sections.length > 0
+    ? node.sections.length * 50 + (node.sections.length - 1) * 8 + 16
+    : 0;
+  return headerHeight + sectionAreaHeight;
 }
 
 /**

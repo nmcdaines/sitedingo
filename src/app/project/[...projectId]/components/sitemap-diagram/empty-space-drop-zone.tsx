@@ -1,16 +1,15 @@
 'use client';
 
 import { useDroppable } from '@dnd-kit/core';
-import { TreeNode } from '../../lib/tree-utils';
 
 interface EmptySpaceDropZoneProps {
   id: string;
   parentId: number | null;
   position: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
   isVisible?: boolean;
 }
 
@@ -18,10 +17,8 @@ export function EmptySpaceDropZone({
   id,
   parentId,
   position,
-  x,
-  y,
-  width,
-  height,
+  width = 280,
+  height = 60,
   isVisible = false,
 }: EmptySpaceDropZoneProps) {
   const {
@@ -37,36 +34,36 @@ export function EmptySpaceDropZone({
   });
 
   return (
-    <foreignObject
+    <div
       ref={setNodeRef}
-      x={x}
-      y={y}
-      width={width}
-      height={height}
+      className={`transition-all duration-200 flex items-center justify-center drop-zone ${
+        isVisible ? (isOver ? 'opacity-100' : 'opacity-60') : 'opacity-0'
+      } ${
+        isOver
+          ? 'bg-primary/40 border-2 border-solid border-primary shadow-xl rounded-lg'
+          : 'bg-primary/20 border-2 border-dashed border-primary/70 rounded-lg'
+      }`}
       style={{
-        pointerEvents: 'all',
-        opacity: isVisible ? (isOver ? 0.8 : 0.4) : 0,
-        zIndex: isOver ? 10 : 1,
+        minHeight: height,
+        minWidth: width,
+        width: '100%',
+        pointerEvents: isVisible ? 'auto' : 'none',
+        zIndex: isOver ? 20 : 5,
+        position: 'relative',
       }}
-      suppressHydrationWarning
     >
-      <div
-        className={`w-full h-full transition-all duration-200 flex items-center justify-center ${
-          isOver
-            ? 'bg-primary/30 border-2 border-dashed border-primary shadow-lg rounded'
-            : 'bg-primary/10 border-2 border-dashed border-primary/50 rounded'
-        }`}
-        style={{
-          minHeight: height,
-        }}
-      >
-        {isOver ? (
-          <div className="w-2 h-12 bg-primary rounded-full shadow-md" />
-        ) : (
-          <div className="w-1 h-8 bg-primary/50 rounded-full" />
-        )}
-      </div>
-    </foreignObject>
+      {isOver ? (
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-16 bg-primary rounded-full shadow-lg animate-pulse" />
+          <span className="text-sm font-medium text-primary">Drop here to reorder</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-10 bg-primary/60 rounded-full" />
+          <span className="text-xs text-primary/70">Drop zone</span>
+        </div>
+      )}
+    </div>
   );
 }
 

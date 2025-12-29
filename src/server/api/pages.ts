@@ -90,11 +90,6 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
       if (!parentPage) {
         return status(400, { error: 'Parent page not found' })
       }
-      // Prevent root level nodes from being parents
-      // Root pages are those with slug "/" or "/home"
-      if (parentPage.slug === '/' || parentPage.slug === '/home') {
-        return status(400, { error: 'Root level pages cannot have children' })
-      }
     }
 
     const page = await db.insert(schema.pages).values({
@@ -161,20 +156,6 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
     // Prevent a page from being its own parent
     if (body.parentId !== null && body.parentId === Number(params.id)) {
       return status(400, { error: 'A page cannot be its own parent' })
-    }
-
-    // Prevent root level nodes from being parents
-    // Root pages are those with slug "/" or "/home"
-    if (body.parentId !== null) {
-      const parentPage = await db.query.pages.findFirst({
-        where: (pages, { eq, and }) => and(
-          eq(pages.id, body.parentId),
-          eq(pages.sitemapId, page.sitemapId)
-        )
-      })
-      if (parentPage && (parentPage.slug === '/' || parentPage.slug === '/home')) {
-        return status(400, { error: 'Root level pages cannot have children' })
-      }
     }
 
     const updated = await db.update(schema.pages)
@@ -280,20 +261,6 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
     // Prevent a page from being its own parent
     if (body.parentId !== null && body.parentId === Number(params.id)) {
       return status(400, { error: 'A page cannot be its own parent' })
-    }
-
-    // Prevent root level nodes from being parents
-    // Root pages are those with slug "/" or "/home"
-    if (body.parentId !== null) {
-      const parentPage = await db.query.pages.findFirst({
-        where: (pages, { eq, and }) => and(
-          eq(pages.id, body.parentId),
-          eq(pages.sitemapId, page.sitemapId)
-        )
-      })
-      if (parentPage && (parentPage.slug === '/' || parentPage.slug === '/home')) {
-        return status(400, { error: 'Root level pages cannot have children' })
-      }
     }
 
     // Update the page's parent and sort order

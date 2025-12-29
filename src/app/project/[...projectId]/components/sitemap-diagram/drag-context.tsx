@@ -1,6 +1,6 @@
 'use client';
 
-import { DndContext, DragEndEvent, DragStartEvent, DragOverEvent, closestCenter, CollisionDetection } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragStartEvent, DragOverEvent, closestCenter, CollisionDetection, pointerWithin, rectIntersection } from '@dnd-kit/core';
 import { ReactNode } from 'react';
 
 interface DragContextProps {
@@ -12,10 +12,34 @@ interface DragContextProps {
 
 /**
  * Custom collision detection that allows both page nodes and drop zones to be detected
- * Prioritizes the closest target, but allows drop zones to be selected when they're clearly the target
+ * Uses pointerWithin for better detection with transformed containers, then falls back to closestCenter
  */
 const customCollisionDetection: CollisionDetection = (args) => {
-  // Get all collisions using closestCenter
+  // First try pointerWithin for better detection with transformed containers
+  const pointerCollisions = pointerWithin(args);
+  
+  if (pointerCollisions.length > 0) {
+    // If we have pointer collisions, prioritize drop zones
+    const dropZoneCollision = pointerCollisions.find(
+      collision => typeof collision.id === 'string' && collision.id.startsWith('reorder-')
+    );
+    if (dropZoneCollision) {
+      return [dropZoneCollision];
+    }
+    
+    // Then prioritize page drop zones
+    const pageDropZoneCollision = pointerCollisions.find(
+      collision => typeof collision.id === 'string' && collision.id.startsWith('drop-page-')
+    );
+    if (pageDropZoneCollision) {
+      return [pageDropZoneCollision];
+    }
+    
+    // Return all pointer collisions
+    return pointerCollisions;
+  }
+  
+  // Fall back to closestCenter for center-based detection
   const collisions = closestCenter(args);
   
   if (collisions.length === 0) return [];

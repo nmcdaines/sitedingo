@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { Home, Info, Folder, Phone, FileText } from "lucide-react";
 import { TreeNode } from "../../lib/tree-utils";
@@ -28,6 +29,8 @@ const pageIcons: Record<string, typeof Home> = {
 };
 
 export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDelete, onDuplicate, showSections = true, children, dropZone }: PageNodeProps) {
+  const contextMenuRef = React.useRef<HTMLDivElement>(null);
+
   const {
     attributes,
     listeners,
@@ -61,6 +64,54 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
     setDroppableRef(element as HTMLElement);
   };
 
+  // Create custom drag listeners that exclude the context menu
+  const customListeners = React.useMemo(() => {
+    if (!listeners) return listeners;
+    
+    // Create a handler that checks if the event target is within the context menu
+    const shouldCancelDrag = (event: React.PointerEvent | React.MouseEvent | React.TouchEvent) => {
+      const target = event.target as HTMLElement;
+      return contextMenuRef.current?.contains(target) ?? false;
+    };
+
+    // Wrap all drag-related event handlers to exclude context menu clicks
+    const wrappedListeners: typeof listeners = {};
+    
+    // Handle pointer events (primary drag mechanism for @dnd-kit)
+    if (listeners.onPointerDown) {
+      wrappedListeners.onPointerDown = (event: React.PointerEvent) => {
+        if (shouldCancelDrag(event)) {
+          // Allow event to propagate normally for context menu clicks
+          return;
+        }
+        listeners.onPointerDown?.(event);
+      };
+    }
+
+    // Handle mouse events (fallback)
+    if (listeners.onMouseDown) {
+      wrappedListeners.onMouseDown = (event: React.MouseEvent) => {
+        if (shouldCancelDrag(event)) {
+          return;
+        }
+        listeners.onMouseDown?.(event);
+      };
+    }
+
+    // Handle touch events (mobile)
+    if (listeners.onTouchStart) {
+      wrappedListeners.onTouchStart = (event: React.TouchEvent) => {
+        if (shouldCancelDrag(event)) {
+          return;
+        }
+        listeners.onTouchStart?.(event);
+      };
+    }
+
+    // Return wrapped listeners, falling back to original for any we didn't wrap
+    return { ...listeners, ...wrappedListeners };
+  }, [listeners]);
+
   const iconName = node.slug.toLowerCase().includes('home') ? 'home' :
                    node.slug.toLowerCase().includes('about') ? 'about' :
                    node.slug.toLowerCase().includes('portfolio') ? 'portfolio' :
@@ -90,13 +141,13 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
           style={{ 
             cursor: isDragging ? 'grabbing' : 'grab',
           }}
-          {...listeners}
+          {...customListeners}
         >
           <div className="flex items-center gap-2">
             <Icon className="w-5 h-5 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">{node.name}</h3>
           </div>
-          <div onClick={(e) => e.stopPropagation()}>
+          <div ref={contextMenuRef} onClick={(e) => e.stopPropagation()}>
             <ContextMenu
               onEdit={() => onEdit?.()}
               onDelete={() => onDelete?.()}

@@ -198,7 +198,7 @@ export function PageTreeNode({
       >
         {canHaveChildren && activeId && (
           <EmptySpaceDropZone
-            id={`reorder-${node.id}-before`}
+            id={`reorder-${node.parentId ?? 'root'}-${node.sortOrder}`}
             parentId={node.parentId}
             position={node.sortOrder}
             width={4}
@@ -210,7 +210,7 @@ export function PageTreeNode({
 
         {canHaveChildren && activeId && (
           <EmptySpaceDropZone
-            id={`reorder-${node.id}-after`}
+            id={`reorder-${node.parentId ?? 'root'}-${node.sortOrder + 1}`}
             parentId={node.parentId}
             position={node.sortOrder + 1}
             width={12}

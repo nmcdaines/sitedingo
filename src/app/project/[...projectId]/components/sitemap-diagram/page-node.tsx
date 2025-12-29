@@ -4,6 +4,7 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { Home, Info, Folder, Phone, FileText } from "lucide-react";
 import { TreeNode } from "../../lib/tree-utils";
 import { ContextMenu } from "../context-menu";
+import { cn } from '@/lib/utils';
 
 interface PageNodeProps {
   node: TreeNode;
@@ -76,27 +77,21 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
       onClick={onClick}
       data-page-node
       style={{ 
-        cursor: isDragging ? 'grabbing' : 'grab',
-        opacity: isDragging ? 0.4 : 1,
+        opacity: isDragging ? 0.8 : 1,
         ...style,
       }}
       {...attributes}
-      {...listeners}
-      className="w-[280px] relative"
+      className={cn("relative transition-[scale] duration-200", isDragging ? "scale-105" : "")}
     >
-      <div
-        className={`relative rounded-lg border-2 p-4 bg-background transition-all duration-200 ${
-          isDragging
-            ? 'border-primary/50 bg-primary/5 shadow-xl scale-105'
-            : isSelected
-            ? 'border-primary bg-primary/5 shadow-md ring-2 ring-primary/20'
-            : isOver
-            ? 'border-primary bg-primary/10 shadow-lg'
-            : 'border-border hover:border-primary/50 hover:shadow-sm'
-        }`}
-      >
+      <div className="w-[280px] ml-auto mr-auto relative rounded-lg">
         {/* Header */}
-        <div className="flex items-center justify-between mb-3">
+        <div 
+          className={cn("flex items-center justify-between mb-2 bg-gray-600/10 rounded py-2 px-2 shadow-sm", isDragging && "border-2 border-primary/50")}
+          style={{ 
+            cursor: isDragging ? 'grabbing' : 'grab',
+          }}
+          {...listeners}
+        >
           <div className="flex items-center gap-2">
             <Icon className="w-5 h-5 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">{node.name}</h3>
@@ -112,7 +107,7 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
 
         {/* Sections */}
         {showSections && node.sections.length > 0 && (
-          <div className="space-y-2 mt-4">
+          <div className="space-y-2 mt-2 bg-background p-2 rounded-lg shadow-sm">
             {node.sections
               .sort((a, b) => a.sortOrder - b.sortOrder)
               .map((section) => (

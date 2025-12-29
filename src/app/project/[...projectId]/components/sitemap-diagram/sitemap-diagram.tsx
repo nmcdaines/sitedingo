@@ -752,21 +752,20 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
             overflow: 'visible',
           }}
         >
-          {/* Root level grid */}
+          {/* Root level flex container */}
           <div 
             ref={contentRef}
             className="w-full h-full p-8"
             style={{ 
-              display: 'grid', 
-              gridTemplateColumns: tree.length > 0 
-                ? `repeat(${tree.length}, 1fr)` 
-                : '1fr',
-              gap: '1rem',
-              alignItems: 'start',
+              display: 'flex',
+              flexDirection: 'row',
+              flexWrap: 'nowrap',
+              gap: '3rem',
+              alignItems: 'flex-start',
             }}
           >
             {tree.length === 0 ? (
-              <div className="flex items-center justify-center col-span-full">
+              <div className="flex items-center justify-center w-full">
                 <p className="text-muted-foreground">No pages found</p>
               </div>
             ) : (
@@ -797,7 +796,7 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
                   </div>
                 ),
                 // The actual node
-                <div key={rootNode.id} className="relative">
+                <div key={rootNode.id} className="relative" style={{ flexShrink: 0, flexGrow: 0, width: 'max-content', minWidth: '280px' }}>
                   <PageTreeNode
                     node={rootNode}
                     localPages={localPages}

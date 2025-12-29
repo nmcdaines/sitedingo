@@ -176,7 +176,7 @@ export function PageTreeNode({
 
   // Render parent with children
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center" style={{ width: 'max-content', minWidth: '280px', overflow: 'visible' }}>
       {/* Parent node */}
       <PageNode
         node={node}
@@ -228,16 +228,11 @@ export function PageTreeNode({
         {/* Vertical line */}
         <VerticalLine />
 
-        {/* Children grid - centered relative to parent */}
-        <div className="relative" style={{ overflow: 'visible', width: 'max-content', left: '50%', transform: 'translateX(-50%)' }}>
-          <div
-            className="grid relative"
-            style={{
-              gridTemplateColumns: `repeat(${sortedChildren.length}, auto)`
-            }}
-          >
+        {/* Children flex container - centered relative to parent */}
+        <div className="relative w-full flex justify-center" style={{ minWidth: 'max-content', overflow: 'visible' }}>
+          <div className="flex flex-row relative flex-nowrap">
             {sortedChildren.map((child, index) => (
-              <div key={child.id} className="flex flex-col items-center relative">
+              <div key={child.id} className="flex flex-col items-center relative" style={{ width: 'max-content', minWidth: '280px', flexShrink: 0, flexGrow: 0 }}>
                 {/* Horizontal arrow */}
                 <HorizontalArrow
                   isFirst={index === 0}

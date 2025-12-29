@@ -65,21 +65,103 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
   const isSavingRef = React.useRef(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const contentRef = React.useRef<HTMLDivElement>(null);
+  const transformRef = React.useRef<HTMLDivElement>(null);
   const zoomRef = React.useRef(externalZoom ?? internalZoom);
   const panRef = React.useRef({ x: 0, y: 0 });
   const hasCenteredRef = React.useRef(false);
+  const rafIdRef = React.useRef<number | null>(null);
+  const pendingPanRef = React.useRef<{ x: number; y: number } | null>(null);
+  const isScrollingRef = React.useRef(false);
+  const scrollTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const accumulatedPanDeltaRef = React.useRef({ x: 0, y: 0 });
 
   const zoom = externalZoom ?? internalZoom;
   const setZoom = onZoomChange ?? setInternalZoom;
 
+  // Function to update transform directly via DOM (for smooth scrolling)
+  const updateTransform = React.useCallback((newPan: { x: number; y: number }, newZoom?: number, skipStateUpdate = false) => {
+    const transformEl = transformRef.current;
+    if (!transformEl) return;
+    
+    const currentZoom = newZoom ?? zoomRef.current;
+    transformEl.style.transform = `translate(${-newPan.x}px, ${-newPan.y}px) scale(${currentZoom})`;
+    panRef.current = newPan;
+    
+    // Only update React state if not actively scrolling
+    if (!skipStateUpdate && !isScrollingRef.current) {
+      setPan(newPan);
+    }
+  }, []);
+
+  // Sync state when scrolling stops (debounced)
+  const scheduleStateSync = React.useCallback(() => {
+    // Clear existing timeout
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    
+    // Mark as scrolling
+    isScrollingRef.current = true;
+    
+    // Debounce state sync until scrolling stops
+    scrollTimeoutRef.current = setTimeout(() => {
+      isScrollingRef.current = false;
+      if (pendingPanRef.current) {
+        setPan(pendingPanRef.current);
+        pendingPanRef.current = null;
+      }
+      scrollTimeoutRef.current = null;
+    }, 150); // 150ms after last scroll event
+  }, []);
+
+  // Apply accumulated pan delta via RAF (batched for smooth scrolling)
+  const applyPanUpdate = React.useCallback(() => {
+    if (accumulatedPanDeltaRef.current.x === 0 && accumulatedPanDeltaRef.current.y === 0) {
+      rafIdRef.current = null;
+      return;
+    }
+
+    const currentPan = panRef.current;
+    const newPan = {
+      x: currentPan.x + accumulatedPanDeltaRef.current.x,
+      y: currentPan.y + accumulatedPanDeltaRef.current.y,
+    };
+    
+    // Reset accumulated delta
+    accumulatedPanDeltaRef.current = { x: 0, y: 0 };
+    
+    // Update transform directly (skip React state update during scrolling)
+    updateTransform(newPan, undefined, true);
+    
+    // Schedule state sync when scrolling stops
+    pendingPanRef.current = newPan;
+    scheduleStateSync();
+    
+    rafIdRef.current = null;
+  }, [updateTransform, scheduleStateSync]);
+
+  // Schedule pan update via RAF
+  const schedulePanUpdate = React.useCallback(() => {
+    if (rafIdRef.current === null) {
+      rafIdRef.current = requestAnimationFrame(applyPanUpdate);
+    }
+  }, [applyPanUpdate]);
+
   // Keep refs in sync with state
   React.useEffect(() => {
     zoomRef.current = zoom;
-  }, [zoom]);
+    // Sync zoom to transform
+    updateTransform(panRef.current, zoom);
+  }, [zoom, updateTransform]);
 
   React.useEffect(() => {
-    panRef.current = pan;
-  }, [pan]);
+    // Only sync if not actively scrolling (to avoid conflicts with wheel handler)
+    if (!isScrollingRef.current) {
+      panRef.current = pan;
+      // Sync pan state to DOM transform (for non-scroll updates like mouse panning)
+      updateTransform(pan, undefined, false);
+    }
+  }, [pan, updateTransform]);
 
   // Update local pages when prop changes (from server)
   React.useEffect(() => {
@@ -255,7 +337,6 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
       e.stopPropagation();
       
       const currentZoom = zoomRef.current;
-      const currentPan = panRef.current;
       
       // Check if it's a pinch gesture (Ctrl/Cmd + wheel) - handle as zoom
       if (e.ctrlKey || e.metaKey) {
@@ -271,10 +352,12 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
         const panDeltaX = (e.deltaX / currentZoom) * scrollSensitivity;
         const panDeltaY = (e.deltaY / currentZoom) * scrollSensitivity;
         
-        setPan({
-          x: currentPan.x + panDeltaX,
-          y: currentPan.y + panDeltaY,
-        });
+        // Accumulate delta for batching
+        accumulatedPanDeltaRef.current.x += panDeltaX;
+        accumulatedPanDeltaRef.current.y += panDeltaY;
+        
+        // Schedule batched update via RAF
+        schedulePanUpdate();
       }
     };
 
@@ -283,8 +366,21 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
     
     return () => {
       container.removeEventListener('wheel', handleWheelNative, { capture: true });
+      // Cancel any pending RAF
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      // Clear scroll timeout
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+        scrollTimeoutRef.current = null;
+      }
+      // Reset scrolling state
+      isScrollingRef.current = false;
+      accumulatedPanDeltaRef.current = { x: 0, y: 0 };
     };
-  }, [setZoom, setPan]);
+  }, [setZoom, schedulePanUpdate]);
 
   // Handle pan start
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -791,12 +887,14 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
         </Button>
         {/* Transform container for zoom and pan */}
         <div
+          ref={transformRef}
           style={{
             transform: `translate(${-pan.x}px, ${-pan.y}px) scale(${zoom})`,
             transformOrigin: '0 0',
             width: '100%',
             height: '100%',
             overflow: 'visible',
+            willChange: 'transform',
           }}
         >
           {/* Root level flex container */}

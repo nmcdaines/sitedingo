@@ -129,18 +129,39 @@ export function PageTreeNode({
     if (!sitemapId) return;
     
     try {
-      // Get siblings to calculate sort order
-      const siblings = localPages.filter(p => p.parentId === parentId);
-      const newSortOrder = siblings.length > 0 ? Math.max(...siblings.map(s => s.sortOrder)) + 1 : position;
+      // Get siblings sorted by sortOrder
+      const siblings = localPages
+        .filter(p => p.parentId === parentId)
+        .sort((a, b) => a.sortOrder - b.sortOrder);
       
+      // Clamp position to valid range
+      const validPosition = Math.max(0, Math.min(position, siblings.length));
+      
+      // Find siblings that need to be shifted (those with sortOrder >= validPosition)
+      const siblingsToShift = siblings.filter(s => s.sortOrder >= validPosition);
+      
+      // Create the new page with sortOrder = validPosition
       const newPage = await client.api.pages.post({
         sitemapId: sitemapId,
         parentId: parentId,
         name: 'New Page',
         slug: `new-page-${Date.now()}`,
         description: null,
-        sortOrder: newSortOrder,
+        sortOrder: validPosition,
       });
+      
+      // Shift all affected siblings by incrementing their sortOrder
+      await Promise.all(
+        siblingsToShift.map(sibling =>
+          client.api.pages({ id: sibling.id.toString() }).put({
+            name: sibling.name,
+            slug: sibling.slug,
+            description: sibling.description,
+            parentId: sibling.parentId,
+            sortOrder: sibling.sortOrder + 1,
+          })
+        )
+      );
       
       // Refresh pages - this should come from parent
       window.location.reload();

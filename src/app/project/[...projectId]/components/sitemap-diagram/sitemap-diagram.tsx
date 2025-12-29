@@ -63,8 +63,10 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
   const isInitialMountRef = React.useRef(true);
   const isSavingRef = React.useRef(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const contentRef = React.useRef<HTMLDivElement>(null);
   const zoomRef = React.useRef(externalZoom ?? internalZoom);
   const panRef = React.useRef({ x: 0, y: 0 });
+  const hasCenteredRef = React.useRef(false);
 
   const zoom = externalZoom ?? internalZoom;
   const setZoom = onZoomChange ?? setInternalZoom;
@@ -142,6 +144,76 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
   const tree = useMemo(() => {
     return buildTree(localPages);
   }, [localPages]);
+
+  // Center sitemap on first load
+  React.useEffect(() => {
+    if (hasCenteredRef.current || !containerRef.current || !contentRef.current || tree.length === 0) return;
+    
+    // Wait for content to render
+    const timeoutId = setTimeout(() => {
+      const container = containerRef.current;
+      const content = contentRef.current;
+      if (!container || !content) return;
+      
+      // Find all page nodes to calculate their bounding box
+      const pageNodes = content.querySelectorAll('[data-page-node]');
+      if (pageNodes.length === 0) return;
+      
+      // Get the transform container (parent of content)
+      const transformContainer = content.parentElement;
+      if (!transformContainer) return;
+      
+      // Calculate bounding box of all page nodes in the content's coordinate space
+      // We need to account for the zoom transform when converting screen coordinates to local coordinates
+      const currentZoom = zoomRef.current;
+      const contentRect = content.getBoundingClientRect();
+      const padding = 32;
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      
+      pageNodes.forEach((node) => {
+        // Get screen coordinates
+        const rect = (node as HTMLElement).getBoundingClientRect();
+        
+        // Convert to content's local coordinate space (accounting for zoom)
+        // Since the transform is scale(zoom), screen coordinates = local * zoom
+        // So local = screen / zoom
+        const localX = (rect.left - contentRect.left) / currentZoom;
+        const localY = (rect.top - contentRect.top) / currentZoom;
+        const localWidth = rect.width / currentZoom;
+        const localHeight = rect.height / currentZoom;
+        
+        minX = Math.min(minX, localX);
+        minY = Math.min(minY, localY);
+        maxX = Math.max(maxX, localX + localWidth);
+        maxY = Math.max(maxY, localY + localHeight);
+      });
+      
+      // Calculate content center
+      const contentCenterX = (minX + maxX) / 2;
+      const contentCenterY = (minY + maxY) / 2;
+      
+      // Get container dimensions
+      const containerRect = container.getBoundingClientRect();
+      const containerWidth = containerRect.width;
+      const containerHeight = containerRect.height;
+      const containerCenterX = containerWidth / 2;
+      const containerCenterY = containerHeight / 2;
+      
+      // Calculate pan offset to center the content
+      // The transform applies: translate(-pan.x, -pan.y) scale(zoom)
+      // To center content at (contentCenterX, contentCenterY) at container center (containerCenterX, containerCenterY):
+      // containerCenterX = (contentCenterX - pan.x) * zoom
+      // Solving for pan.x: pan.x = contentCenterX - containerCenterX / zoom
+      const offsetX = contentCenterX - containerCenterX / currentZoom;
+      const offsetY = contentCenterY - containerCenterY / currentZoom;
+      
+      // Set pan to center the content
+      setPan({ x: offsetX, y: offsetY });
+      hasCenteredRef.current = true;
+    }, 150);
+    
+    return () => clearTimeout(timeoutId);
+  }, [tree.length, zoom, localPages.length]);
 
   if (pages.length === 0) {
     return (
@@ -682,6 +754,7 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
         >
           {/* Root level grid */}
           <div 
+            ref={contentRef}
             className="w-full h-full p-8"
             style={{ 
               display: 'grid', 

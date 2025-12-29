@@ -14,6 +14,7 @@ interface PageNodeProps {
   onDelete?: () => void;
   onDuplicate?: () => void;
   showSections?: boolean;
+  children?: React.ReactNode;
 }
 
 const pageIcons: Record<string, typeof Home> = {
@@ -24,7 +25,7 @@ const pageIcons: Record<string, typeof Home> = {
   default: FileText,
 };
 
-export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDelete, onDuplicate, showSections = true }: PageNodeProps) {
+export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDelete, onDuplicate, showSections = true, children }: PageNodeProps) {
   const {
     attributes,
     listeners,
@@ -72,6 +73,7 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
     <div
       ref={setNodeRef}
       onClick={onClick}
+      data-page-node
       style={{ 
         cursor: isDragging ? 'grabbing' : 'grab',
         opacity: isDragging ? 0.4 : 1,
@@ -79,7 +81,7 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
       }}
       {...attributes}
       {...listeners}
-      className="w-[280px]"
+      className="w-[280px] relative"
     >
       <div
         className={`rounded-lg border-2 p-4 bg-background transition-all duration-200 ${
@@ -125,6 +127,8 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
           </div>
         )}
       </div>
+
+      {children}
     </div>
   );
 }

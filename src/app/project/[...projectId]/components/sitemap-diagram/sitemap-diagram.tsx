@@ -8,6 +8,7 @@ import { buildTree, TreeNode, getSiblings, calculateSortOrder } from '../../lib/
 import { PageTreeNode } from './page-tree-node';
 import { DragContext } from './drag-context';
 import { EmptySpaceDropZone } from './empty-space-drop-zone';
+import { AddPageButton } from './add-page-button';
 import { client } from '@/lib/client';
 import { Button } from '@/components/ui/button';
 
@@ -573,6 +574,31 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
     // Could add visual feedback here
   };
 
+  // Handle adding a new page
+  const handleAddPage = async (parentId: number | null, position: number) => {
+    if (!sitemapId) return;
+    
+    try {
+      // Get siblings to calculate sort order
+      const siblings = localPages.filter(p => p.parentId === parentId);
+      const newSortOrder = siblings.length > 0 ? Math.max(...siblings.map(s => s.sortOrder)) + 1 : position;
+      
+      const newPage = await client.api.pages.post({
+        sitemapId: sitemapId,
+        parentId: parentId,
+        name: 'New Page',
+        slug: `new-page-${Date.now()}`,
+        description: null,
+        sortOrder: newSortOrder,
+      });
+      
+      // Refresh pages - this should come from parent
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to create page:', error);
+    }
+  };
+
   // Auto-save mutation
   const savePageMutation = useMutation({
     mutationFn: async (page: { id: number; parentId: number | null; sortOrder: number }) => {
@@ -846,6 +872,20 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
                     sitemapId={sitemapId}
                   />
                 </div>,
+                // Add page button between pages (not after last)
+                index < tree.length - 1 && (
+                  <div 
+                    key={`add-page-${rootNode.id}`} 
+                    className="relative flex flex-col items-center justify-center" 
+                    style={{ flexShrink: 0, flexGrow: 0, width: 'max-content', minWidth: '60px' }}
+                  >
+                    <AddPageButton
+                      onClick={() => handleAddPage(null, index + 1)}
+                      parentId={null}
+                      position={index + 1}
+                    />
+                  </div>
+                ),
                 // Drop zone after last node
                 activeId && index === tree.length - 1 && (
                   <div

@@ -4,6 +4,8 @@ import React from 'react';
 import { TreeNode } from '../../lib/tree-utils';
 import { PageNode } from './page-node';
 import { EmptySpaceDropZone } from './empty-space-drop-zone';
+import { AddPageButton, HorizontalLine } from './add-page-button';
+import { client } from '@/lib/client';
 
 interface PageTreeNodeProps {
   node: TreeNode;
@@ -122,6 +124,31 @@ export function PageTreeNode({
   const nodePage = localPages.find(p => p.id === node.id);
   const canHaveChildren = true; // Allow all pages to have children
 
+  // Handle adding a new child page
+  const handleAddPage = async (parentId: number | null, position: number) => {
+    if (!sitemapId) return;
+    
+    try {
+      // Get siblings to calculate sort order
+      const siblings = localPages.filter(p => p.parentId === parentId);
+      const newSortOrder = siblings.length > 0 ? Math.max(...siblings.map(s => s.sortOrder)) + 1 : position;
+      
+      const newPage = await client.api.pages.post({
+        sitemapId: sitemapId,
+        parentId: parentId,
+        name: 'New Page',
+        slug: `new-page-${Date.now()}`,
+        description: null,
+        sortOrder: newSortOrder,
+      });
+      
+      // Refresh pages - this should come from parent
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to create page:', error);
+    }
+  };
+
   // Base case: render a single page node
   if (sortedChildren.length === 0) {
     return (
@@ -231,7 +258,7 @@ export function PageTreeNode({
         {/* Children flex container - centered relative to parent */}
         <div className="relative w-full flex justify-center" style={{ minWidth: 'max-content', overflow: 'visible' }}>
           <div className="flex flex-row relative flex-nowrap">
-            {sortedChildren.map((child, index) => (
+            {sortedChildren.flatMap((child, index) => [
               <div key={child.id} className="flex flex-col items-center relative" style={{ width: 'max-content', minWidth: '280px', flexShrink: 0, flexGrow: 0 }}>
                 {/* Horizontal arrow */}
                 <HorizontalArrow
@@ -276,8 +303,27 @@ export function PageTreeNode({
                     />
                   )}
                 </PageTreeNode>
-              </div>
-            ))}
+              </div>,
+              // Add page button between children (not after last)
+              index < sortedChildren.length - 1 && (
+                <div 
+                  key={`add-page-${child.id}`} 
+                  className="flex flex-col items-center relative" 
+                  style={{ flexShrink: 0, flexGrow: 0, width: 'max-content', height: '100%' }}
+                >
+                  <div className="absolute top-0 left-0 right-0 w-full">
+                    <HorizontalLine />
+                  </div>
+
+                  <AddPageButton
+                    onClick={() => handleAddPage(node.id, index + 1)}
+                    parentId={node.id}
+                    position={index + 1}
+                    className="mt-11"
+                  />
+                </div>
+              ),
+            ]).filter(Boolean)}
           </div>
         </div>
 

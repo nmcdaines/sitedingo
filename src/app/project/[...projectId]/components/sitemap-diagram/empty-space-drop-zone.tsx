@@ -56,14 +56,14 @@ export function EmptySpaceDropZone({
       }}
     >
       {isOver ? (
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-16 bg-primary rounded-full shadow-lg animate-pulse" />
-          <span className="text-sm font-medium text-primary">Drop here to reorder</span>
+        <div className="flex items-center h-full">
+          <div className="w-1 h-full bg-gray-600 rounded-full shadow-lg animate-pulse mr-auto ml-0 -translate-x-1/2" />
+          {/* <span className="text-sm font-medium text-primary">Drop here to reorder</span> */}
         </div>
       ) : (
-        <div className="flex items-center gap-2 bg-red-600/50">
-          <div className="w-1.5 h-10 bg-primary/60 rounded-full" />
-          <span className="text-xs text-primary/70">Drop zone</span>
+        <div className="flex items-center bg-red-600/50 h-full">
+          {/* <div className="w-1.5 h-10 bg-primary/60 rounded-full" /> */}
+          {/* <span className="text-xs text-primary/70">Drop zone</span> */}
         </div>
       )}
     </div>

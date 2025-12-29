@@ -15,6 +15,7 @@ interface PageNodeProps {
   onDuplicate?: () => void;
   showSections?: boolean;
   children?: React.ReactNode;
+  dropZone?: React.ReactNode;
 }
 
 const pageIcons: Record<string, typeof Home> = {
@@ -25,7 +26,7 @@ const pageIcons: Record<string, typeof Home> = {
   default: FileText,
 };
 
-export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDelete, onDuplicate, showSections = true, children }: PageNodeProps) {
+export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDelete, onDuplicate, showSections = true, children, dropZone }: PageNodeProps) {
   const {
     attributes,
     listeners,
@@ -84,7 +85,7 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
       className="w-[280px] relative"
     >
       <div
-        className={`rounded-lg border-2 p-4 bg-background transition-all duration-200 ${
+        className={`relative rounded-lg border-2 p-4 bg-background transition-all duration-200 ${
           isDragging
             ? 'border-primary/50 bg-primary/5 shadow-xl scale-105'
             : isSelected
@@ -126,6 +127,8 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
               ))}
           </div>
         )}
+
+        {dropZone}
       </div>
 
       {children}

@@ -91,7 +91,7 @@ function HorizontalArrow({ isFirst, isLast }: { isFirst: boolean; isLast: boolea
         style={lineStyle}
       />
 
-      {/* Vertical line with arrow */}
+      {/* Vertical line with arrow - centered to align with PageNode */}
       <line
         x1="50%"
         y1="0"
@@ -125,7 +125,7 @@ export function PageTreeNode({
   // Base case: render a single page node
   if (sortedChildren.length === 0) {
     return (
-      <div className="flex flex-col items-center relative px-4">
+      <div className="flex flex-col items-center relative">
         <PageNode
           node={node}
           isSelected={selectedNodeId === node.id}
@@ -195,88 +195,98 @@ export function PageTreeNode({
             await onPageDuplicate(pageData);
           }
         } : undefined}
-      >
-        {canHaveChildren && activeId && (
-          <EmptySpaceDropZone
-            id={`reorder-${node.parentId ?? 'root'}-${node.sortOrder}`}
-            parentId={node.parentId}
-            position={node.sortOrder}
-            width={4}
-            height={60}
-            isVisible={true}
-            className='absolute bg-yellow-600/50 left-0 top-0 h-full w-[12px] -translate-x-full'
-          />
-        )}
 
-        {canHaveChildren && activeId && (
-          <EmptySpaceDropZone
-            id={`reorder-${node.parentId ?? 'root'}-${node.sortOrder + 1}`}
-            parentId={node.parentId}
-            position={node.sortOrder + 1}
-            width={12}
-            height={60}
-            isVisible={true}
-            className='absolute bg-green-600/50 right-0 top-0 h-full w-[12px]'
-          />
-        )}
-      </PageNode>
-
-      {/* Vertical line */}
-      <VerticalLine />
-
-      {/* Children grid */}
-      <div
-        className="grid w-full relative"
-        style={{ gridTemplateColumns: `repeat(${sortedChildren.length}, 1fr)` }}
-      >
-        {sortedChildren.map((child, index) => (
-          <div key={child.id} className="flex flex-col items-center relative">
-            {/* Horizontal arrow */}
-            <HorizontalArrow
-              isFirst={index === 0}
-              isLast={index === sortedChildren.length - 1}
+        dropZone={<>
+          {canHaveChildren && activeId && (
+            <EmptySpaceDropZone
+              id={`reorder-${node.parentId ?? 'root'}-${node.sortOrder}`}
+              parentId={node.parentId}
+              position={node.sortOrder}
+              width={12}
+              height={60}
+              isVisible={true}
+              className='absolute bg-yellow-600/50 left-0 top-0 h-full w-[12px] -translate-x-full'
             />
+          )}
 
-            {/* Recursive child node */}
-            <PageTreeNode
-              node={child}
-              localPages={localPages}
-              selectedNodeId={selectedNodeId}
-              activeId={activeId}
-              showSections={showSections}
-              onPageSelect={onPageSelect}
-              onPageEdit={onPageEdit}
-              onPageDelete={onPageDelete}
-              onPageDuplicate={onPageDuplicate}
-              sitemapId={sitemapId}
-            >
-              {canHaveChildren && activeId && (
-                <EmptySpaceDropZone
-                  id={`reorder-${node.id}-${index}`}
-                  parentId={node.id}
-                  position={index}
-                  width={4}
-                  height={60}
-                  isVisible={true}
-                  className='absolute bg-yellow-600/50 left-0 top-0 h-full w-[12px]'
-                />
-              )}
+          {canHaveChildren && activeId && (
+            <EmptySpaceDropZone
+              id={`reorder-${node.parentId ?? 'root'}-${node.sortOrder + 1}`}
+              parentId={node.parentId}
+              position={node.sortOrder + 1}
+              width={12}
+              height={60}
+              isVisible={true}
+              className='absolute bg-green-600/50 right-0 top-0 h-full w-[12px] translate-x-full'
+            />
+          )}
+        </>}
+      >
 
-              {canHaveChildren && activeId && index === sortedChildren.length - 1 && (
-                <EmptySpaceDropZone
-                  id={`reorder-${node.id}-${index + 1}`}
-                  parentId={node.id}
-                  position={index + 1}
-                  width={12}
-                  height={60}
-                  isVisible={true}
-                  className='absolute bg-green-600/50 right-0 top-0 h-full w-[12px]'
+
+
+        {/* Vertical line */}
+        <VerticalLine />
+
+        {/* Children grid - centered relative to parent */}
+        <div className="relative" style={{ overflow: 'visible', width: 'max-content', left: '50%', transform: 'translateX(-50%)' }}>
+          <div
+            className="grid relative"
+            style={{
+              gridTemplateColumns: `repeat(${sortedChildren.length}, auto)`
+            }}
+          >
+            {sortedChildren.map((child, index) => (
+              <div key={child.id} className="flex flex-col items-center relative">
+                {/* Horizontal arrow */}
+                <HorizontalArrow
+                  isFirst={index === 0}
+                  isLast={index === sortedChildren.length - 1}
                 />
-              )}
-            </PageTreeNode>
+
+                {/* Recursive child node */}
+                <PageTreeNode
+                  node={child}
+                  localPages={localPages}
+                  selectedNodeId={selectedNodeId}
+                  activeId={activeId}
+                  showSections={showSections}
+                  onPageSelect={onPageSelect}
+                  onPageEdit={onPageEdit}
+                  onPageDelete={onPageDelete}
+                  onPageDuplicate={onPageDuplicate}
+                  sitemapId={sitemapId}
+                >
+                  {canHaveChildren && activeId && (
+                    <EmptySpaceDropZone
+                      id={`reorder-${node.id}-${index}`}
+                      parentId={node.id}
+                      position={index}
+                      width={4}
+                      height={60}
+                      isVisible={true}
+                      className='absolute bg-yellow-600/50 left-0 top-0 h-full w-[12px] -translate-x-full'
+                    />
+                  )}
+
+                  {canHaveChildren && activeId && index === sortedChildren.length - 1 && (
+                    <EmptySpaceDropZone
+                      id={`reorder-${node.id}-${index + 1}`}
+                      parentId={node.id}
+                      position={index + 1}
+                      width={12}
+                      height={60}
+                      isVisible={true}
+                      className='absolute bg-green-600/50 right-0 top-0 h-full w-[12px] translate-x-full'
+                    />
+                  )}
+                </PageTreeNode>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+
+      </PageNode>
     </div>
   );
 }

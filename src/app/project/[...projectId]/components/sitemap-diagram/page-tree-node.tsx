@@ -192,30 +192,6 @@ export function PageTreeNode({
             }
           } : undefined}
         />
-        {/* Drop zone for adding first child - absolutely positioned */}
-        {/* {canHaveChildren && activeId && (
-          <div 
-            className="absolute pointer-events-auto"
-            style={{
-              top: '100%',
-              marginTop: '1rem',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: '280px',
-              height: '60px',
-            }}
-          >
-            <EmptySpaceDropZone
-              id={`reorder-${node.id}-0`}
-              parentId={node.id}
-              position={0}
-              width={280}
-              height={60}
-              isVisible={true}
-              className='bg-blue-600/50'
-            />
-          </div>
-        )} */}
 
         {children}
       </div>
@@ -253,7 +229,7 @@ export function PageTreeNode({
               width={12}
               height={60}
               isVisible={true}
-              className='absolute bg-yellow-600/50 left-0 top-0 h-full w-[12px] -translate-x-full'
+              className='absolute bg-yellow-600/50 left-0 right-[calc(50%+140px)] top-0 h-full w-auto'
             />
           )}
 
@@ -265,7 +241,7 @@ export function PageTreeNode({
               width={12}
               height={60}
               isVisible={true}
-              className='absolute bg-green-600/50 right-0 top-0 h-full w-[12px] translate-x-full'
+              className='z-0 absolute bg-green-600/50 right-0 top-0 h-full left-[calc(50%+140px)] w-auto'
             />
           )}
         </>}

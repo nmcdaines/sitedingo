@@ -132,8 +132,9 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
         ...style,
       }}
       {...attributes}
-      className={cn("relative transition-[scale] duration-200", isDragging ? "scale-105" : "")}
+      className={cn(" transition-[scale] duration-200", isDragging ? "scale-105" : "")}
     >
+      <div className="relative">
       <div className="w-[280px] ml-auto mr-auto relative rounded-lg">
         {/* Header */}
         <div 
@@ -174,6 +175,7 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
           </div>
         )}
 
+      </div>
         {dropZone}
       </div>
 

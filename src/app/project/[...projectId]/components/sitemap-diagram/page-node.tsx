@@ -180,7 +180,7 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
               ref={setSectionContainerRef}
               className={cn(
                 "space-y-3 bg-background p-2 rounded-lg shadow-sm transition-colors",
-                isSectionOver && "ring-2 ring-primary/50"
+                // isSectionOver && "ring-2 ring-primary/50"
               )}
             >
               {node.sections.length > 0 ? (

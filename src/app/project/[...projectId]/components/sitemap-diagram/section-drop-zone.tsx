@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 
@@ -12,7 +12,7 @@ interface SectionDropZoneProps {
 }
 
 export function SectionDropZone({ id, pageId, position, isVisible = false }: SectionDropZoneProps) {
-  const { setNodeRef, isOver } = useDroppable({
+  const { setNodeRef, isOver, active } = useDroppable({
     id,
     data: {
       type: 'section-drop-zone',
@@ -20,6 +20,10 @@ export function SectionDropZone({ id, pageId, position, isVisible = false }: Sec
       position,
     },
   });
+
+  const isActiveElementSection = useMemo(() => {
+    return active?.id.toString().startsWith('section-');
+  }, [active?.id]);
 
   // Always render the drop zone (for drag detection) but make it invisible when not needed
   return (
@@ -39,7 +43,7 @@ export function SectionDropZone({ id, pageId, position, isVisible = false }: Sec
         transform: "translateY(-75%)",
       }}
     >
-      {isOver && (
+      {isOver && isActiveElementSection && (
         <div className="h-1 bg-gray-600 rounded-full ml-2 mr-2 w-full" />
       )}
     </div>

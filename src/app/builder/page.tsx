@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { BackgroundEditor } from "@/components/ui/background-editor";
+import { type BackgroundConfig } from "@/components/blocks/background-types";
 import {
   DndContext,
   DragEndEvent,
@@ -542,6 +544,23 @@ function SortableBlockItem({
   );
 }
 
+// Helper to check if a value is a BackgroundConfig
+function isBackgroundConfig(value: unknown): value is BackgroundConfig {
+  if (typeof value !== "object" || value === null) return false;
+  const obj = value as Record<string, unknown>;
+  return (
+    obj.type === "color" ||
+    obj.type === "image" ||
+    obj.type === "gradient"
+  );
+}
+
+// Helper to check if a prop name suggests it's a background property
+function isBackgroundPropName(name: string): boolean {
+  const bgNames = ["background", "backgroundColor", "bg", "backgroundConfig"];
+  return bgNames.includes(name) || name.toLowerCase().includes("background");
+}
+
 // Props Editor Component
 function BlockPropsEditor({
   block,
@@ -557,10 +576,37 @@ function BlockPropsEditor({
   const renderPropEditor = (
     value: unknown,
     propPath: string,
+    propName: string,
     depth: number = 0
   ): React.ReactNode => {
     if (value === null || value === undefined) {
       return null;
+    }
+
+    // Check for background configuration
+    if (isBackgroundConfig(value)) {
+      return (
+        <BackgroundEditor
+          value={value}
+          onChange={(newValue) => onUpdate(propPath, newValue)}
+        />
+      );
+    }
+
+    // Check if this is a simple string background that should be converted
+    if (typeof value === "string" && isBackgroundPropName(propName)) {
+      // Convert legacy string background to BackgroundConfig
+      const bgConfig: BackgroundConfig = {
+        type: "color",
+        value: value.startsWith("bg-") ? "#ffffff" : value,
+        opacity: 100,
+      };
+      return (
+        <BackgroundEditor
+          value={bgConfig}
+          onChange={(newValue) => onUpdate(propPath, newValue)}
+        />
+      );
     }
 
     if (typeof value === "string") {
@@ -620,7 +666,7 @@ function BlockPropsEditor({
           {value.map((item, index) => (
             <div key={index} className="space-y-2">
               <span className="text-xs text-muted-foreground">Item {index + 1}</span>
-              {renderPropEditor(item, `${propPath}.${index}`, depth + 1)}
+              {renderPropEditor(item, `${propPath}.${index}`, String(index), depth + 1)}
             </div>
           ))}
         </div>
@@ -635,7 +681,7 @@ function BlockPropsEditor({
               <label className="text-xs font-medium text-muted-foreground capitalize mb-1 block">
                 {key.replace(/([A-Z])/g, " $1").trim()}
               </label>
-              {renderPropEditor(val, `${propPath}.${key}`, depth + 1)}
+              {renderPropEditor(val, `${propPath}.${key}`, key, depth + 1)}
             </div>
           ))}
         </div>
@@ -658,7 +704,7 @@ function BlockPropsEditor({
             <label className="text-sm font-medium capitalize mb-2 block">
               {key.replace(/([A-Z])/g, " $1").trim()}
             </label>
-            {renderPropEditor(value, key)}
+            {renderPropEditor(value, key, key)}
           </div>
         ))}
       </div>

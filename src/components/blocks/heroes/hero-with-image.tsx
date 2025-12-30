@@ -2,7 +2,8 @@
 
 import { z } from "zod";
 import { defineBlock } from "../registry";
-import { BlockCategory, buttonPropsSchema, imagePropsSchema } from "../types";
+import { BlockCategory, buttonPropsSchema } from "../types";
+import { backgroundImageSchema, getBackgroundStyles } from "../background-types";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -11,8 +12,7 @@ const heroWithImagePropsSchema = z.object({
   subheadline: z.string(),
   primaryCta: buttonPropsSchema.optional(),
   secondaryCta: buttonPropsSchema.optional(),
-  backgroundImage: imagePropsSchema,
-  overlayOpacity: z.number().min(0).max(1).optional(),
+  background: backgroundImageSchema,
   textColor: z.enum(["light", "dark"]).optional(),
 });
 
@@ -23,8 +23,7 @@ export function HeroWithImage({
   subheadline,
   primaryCta,
   secondaryCta,
-  backgroundImage,
-  overlayOpacity = 0.5,
+  background,
   textColor = "light",
 }: HeroWithImageProps) {
   const textClasses = textColor === "light" 
@@ -35,21 +34,23 @@ export function HeroWithImage({
     ? "text-white/80"
     : "text-muted-foreground";
 
+  const bgStyles = getBackgroundStyles(background);
+
   return (
     <section className="relative w-full min-h-[600px] flex items-center">
       {/* Background Image */}
-      <div className="absolute inset-0">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={backgroundImage.src}
-          alt={backgroundImage.alt}
-          className="w-full h-full object-cover"
-        />
+      <div className="absolute inset-0" style={bgStyles} />
+      
+      {/* Overlay */}
+      {background.overlay && (
         <div 
-          className="absolute inset-0 bg-black"
-          style={{ opacity: overlayOpacity }}
+          className="absolute inset-0"
+          style={{
+            backgroundColor: background.overlay.color,
+            opacity: background.overlay.opacity / 100,
+          }}
         />
-      </div>
+      )}
 
       {/* Content */}
       <div className="relative z-10 w-full">
@@ -117,11 +118,18 @@ export const heroWithImageBlock = defineBlock({
       href: "/about",
       variant: "outline",
     },
-    backgroundImage: {
-      src: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&h=900&fit=crop",
-      alt: "Modern office space",
+    background: {
+      type: "image",
+      url: "https://images.unsplash.com/photo-1497366216548-37526070297c?w=1600&h=900&fit=crop",
+      size: "cover",
+      position: "center",
+      repeat: "no-repeat",
+      attachment: "scroll",
+      overlay: {
+        color: "#000000",
+        opacity: 50,
+      },
     },
-    overlayOpacity: 0.5,
     textColor: "light",
   },
   propsSchema: heroWithImagePropsSchema,

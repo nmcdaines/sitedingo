@@ -1,12 +1,14 @@
 'use client';
 
 import React from 'react';
-import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { useDraggable, useDroppable, DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core';
 import { Home, Info, Folder, Phone, FileText, PlusIcon, StarsIcon } from "lucide-react";
 import { TreeNode } from "../../lib/tree-utils";
 import { ContextMenu } from "../context-menu";
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { SectionNode } from './section-node';
+import { SectionDropZone } from './section-drop-zone';
 
 interface PageNodeProps {
   node: TreeNode;
@@ -19,6 +21,7 @@ interface PageNodeProps {
   showSections?: boolean;
   children?: React.ReactNode;
   dropZone?: React.ReactNode;
+  activeId?: string | null;
 }
 
 const pageIcons: Record<string, typeof Home> = {
@@ -29,7 +32,7 @@ const pageIcons: Record<string, typeof Home> = {
   default: FileText,
 };
 
-export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDelete, onDuplicate, showSections = true, children, dropZone }: PageNodeProps) {
+export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDelete, onDuplicate, showSections = true, children, dropZone, activeId }: PageNodeProps) {
   const contextMenuRef = React.useRef<HTMLDivElement>(null);
 
   const {
@@ -47,13 +50,26 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
 
   const {
     setNodeRef: setDroppableRef,
-    isOver,
+    isOver: isPageOver,
   } = useDroppable({
     id: `drop-page-${node.id}`,
     data: {
       type: 'drop-zone',
       accepts: ['page'],
       node,
+    },
+  });
+
+  // Also make the sections container a drop zone for sections (fallback to append at end)
+  const {
+    setNodeRef: setSectionContainerRef,
+    isOver: isSectionOver,
+  } = useDroppable({
+    id: `drop-section-page-${node.id}`,
+    data: {
+      type: 'section-page-drop',
+      pageId: node.id,
+      position: node.sections.length,
     },
   });
 
@@ -160,26 +176,55 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
 
           {/* Sections */}
           {showSections && (
-            <div className="space-y-2 mt-2 bg-background p-2 rounded-lg shadow-sm">
-              {node.sections.length > 0 && node.sections
-                .sort((a, b) => a.sortOrder - b.sortOrder)
-                .map((section) => (
-                  <div
-                    key={section.id}
-                    className="rounded border border-border bg-muted/50 p-2 text-xs"
-                  >
-                    <div className="font-medium text-muted-foreground">
-                      {section.name || section.componentType}
-                    </div>
+            <div 
+              ref={setSectionContainerRef}
+              className={cn(
+                "space-y-3 bg-background p-2 rounded-lg shadow-sm transition-colors",
+                isSectionOver && "ring-2 ring-primary/50"
+              )}
+            >
+              {node.sections.length > 0 ? (
+                <>
+                  {/* Drop zone at the beginning - always show when dragging sections */}
+                  <SectionDropZone
+                    id={`section-drop-${node.id}-0`}
+                    pageId={node.id}
+                    position={0}
+                    isVisible={activeId?.startsWith('section-') || false}
+                  />
+                  {node.sections
+                    .sort((a, b) => a.sortOrder - b.sortOrder)
+                    .map((section, index) => (
+                      <React.Fragment key={section.id}>
+                        <SectionNode
+                          section={section}
+                          pageId={node.id}
+                          isDragging={activeId === `section-${section.id}`}
+                        />
+                        {/* Drop zone after each section - always show when dragging sections */}
+                        <SectionDropZone
+                          id={`section-drop-${node.id}-${index + 1}`}
+                          pageId={node.id}
+                          position={index + 1}
+                          isVisible={activeId?.startsWith('section-') || false}
+                        />
+                      </React.Fragment>
+                    ))}
+                </>
+              ) : (
+                <>
+                  {/* Drop zone for empty page when dragging - always show when dragging sections */}
+                  <SectionDropZone
+                    id={`section-drop-${node.id}-0`}
+                    pageId={node.id}
+                    position={0}
+                    isVisible={activeId?.startsWith('section-') || false}
+                  />
+                  <div className="flex flex-col items-center gap-2">
+                    <Button className='w-full' variant="outline"><PlusIcon /> Section</Button>
+                    <Button className='w-full' variant="outline"><StarsIcon /> Generate Content</Button>
                   </div>
-                ))}
-
-
-              {node.sections.length <= 0 && (
-                <div className="flex flex-col items-center gap-2">
-                  <Button className='w-full' variant="outline"><PlusIcon /> Section</Button>
-                  <Button className='w-full' variant="outline"><StarsIcon /> Generate Content</Button>
-                </div>
+                </>
               )}
             </div>
           )}

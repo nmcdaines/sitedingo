@@ -7,6 +7,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { buildTree, TreeNode, getSiblings, calculateSortOrder } from '../../lib/tree-utils';
 import { PageTreeNode } from './page-tree-node';
 import { DragContext } from './drag-context';
+import { SectionDragContext } from './section-drag-context';
 import { EmptySpaceDropZone } from './empty-space-drop-zone';
 import { AddPageButton } from './add-page-button';
 import { client } from '@/lib/client';
@@ -52,6 +53,7 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
   const [mouseDownOnEmptySpace, setMouseDownOnEmptySpace] = useState(false);
   const [mouseDownPos, setMouseDownPos] = useState({ x: 0, y: 0 });
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [localPages, setLocalPages] = useState(pages);
   const [showSections, setShowSections] = useState(true);
 
@@ -172,19 +174,47 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
     const pagesChanged = pages.length !== previousPagesRef.current.length ||
       pages.some(page => {
         const prev = prevPagesMap.get(page.id);
-        return !prev || 
-          page.parentId !== prev.parentId ||
-          page.sortOrder !== prev.sortOrder ||
-          page.name !== prev.name ||
-          page.slug !== prev.slug;
+        if (!prev) return true;
+        
+        // Check page-level changes
+        if (page.parentId !== prev.parentId ||
+            page.sortOrder !== prev.sortOrder ||
+            page.name !== prev.name ||
+            page.slug !== prev.slug) {
+          return true;
+        }
+        
+        // Check section changes - compare sections by ID and sortOrder
+        const prevSectionsMap = new Map(prev.sections.map(s => [s.id, s]));
+        
+        // Check if section count changed
+        if (page.sections.length !== prev.sections.length) return true;
+        
+        // Check if any section changed (sections don't have pageId in the interface, it's implicit from the page)
+        const sectionsChanged = page.sections.some(section => {
+          const prevSection = prevSectionsMap.get(section.id);
+          return !prevSection ||
+            section.sortOrder !== prevSection.sortOrder ||
+            section.componentType !== prevSection.componentType ||
+            section.name !== prevSection.name;
+        }) ||
+        prev.sections.some(prevSection => !page.sections.some(s => s.id === prevSection.id));
+        
+        return sectionsChanged;
       }) ||
       previousPagesRef.current.some(prev => !pagesMap.has(prev.id));
     
     if (pagesChanged) {
-      setLocalPages(pages);
-      setHistory([pages]);
+      // Ensure sections are sorted by sortOrder when updating from server
+      const pagesWithSortedSections = pages.map(page => ({
+        ...page,
+        sections: [...page.sections].sort((a, b) => a.sortOrder - b.sortOrder),
+      }));
+      
+      setLocalPages(pagesWithSortedSections);
+      setHistory([pagesWithSortedSections]);
       setHistoryIndex(0);
-      previousPagesRef.current = pages;
+      previousPagesRef.current = pagesWithSortedSections;
     }
   }, [pages]);
 
@@ -494,16 +524,229 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
     setMouseDownOnEmptySpace(false);
   };
 
-  // Handle drag start
+  // Handle drag start (for pages)
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
+    const activeData = event.active.data.current;
+    // Only handle page drags in the main context
+    if (activeData?.type === 'page') {
+      setActiveId(event.active.id as string);
+      // Stop any panning when drag starts
+      setIsPanning(false);
+      setMouseDownOnEmptySpace(false);
+    }
+  };
+
+  // Handle section drag start
+  const handleSectionDragStart = (event: DragStartEvent) => {
+    const id = event.active.id as string;
+    setActiveSectionId(id);
+    setActiveId(id); // Also set main activeId for UI updates
     // Stop any panning when drag starts
     setIsPanning(false);
     setMouseDownOnEmptySpace(false);
   };
 
-  // Handle drag end
-  const handleDragEnd = (event: DragEndEvent) => {
+  // Handle section drag end
+  const handleSectionDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveSectionId(null);
+    setActiveId(null);
+
+    if (!over) {
+      console.log('[SectionDragEnd] No over target');
+      return;
+    }
+
+    const activeData = active.data.current;
+    if (!activeData || activeData.type !== 'section') {
+      console.log('[SectionDragEnd] Invalid active data:', activeData);
+      return;
+    }
+
+    // Handle section drags
+    const draggedSection = activeData.section as { id: number; componentType: string; name: string | null; metadata: any; sortOrder: number };
+    const sourcePageId = activeData.pageId as number;
+    const overId = over.id as string;
+    
+    console.log('[SectionDragEnd] Dragging section', draggedSection.id, 'from page', sourcePageId, 'over', overId);
+
+    let targetPageId: number;
+    let targetPosition: number;
+
+    // Check if dropped on a section drop zone
+    if (overId.startsWith('section-drop-')) {
+      // Parse: section-drop-{pageId}-{position}
+      const match = overId.match(/^section-drop-(\d+)-(\d+)$/);
+      if (!match) {
+        console.log('[SectionDragEnd] Invalid section drop zone ID:', overId);
+        return;
+      }
+
+      targetPageId = parseInt(match[1]);
+      targetPosition = parseInt(match[2]);
+    } else if (overId.startsWith('drop-section-page-')) {
+      // Dropped on the page container itself - append to end
+      const match = overId.match(/^drop-section-page-(\d+)$/);
+      if (!match) {
+        console.log('[SectionDragEnd] Invalid section page drop ID:', overId);
+        return;
+      }
+
+      targetPageId = parseInt(match[1]);
+      const targetPageForLength = localPages.find(p => p.id === targetPageId);
+      if (!targetPageForLength) {
+        console.log('[SectionDragEnd] Target page not found');
+        return;
+      }
+      targetPosition = targetPageForLength.sections.length;
+    } else {
+      console.log('[SectionDragEnd] Section not dropped on valid target:', overId);
+      return;
+    }
+
+    // Get pages
+    const targetPage = localPages.find(p => p.id === targetPageId);
+    const sourcePage = localPages.find(p => p.id === sourcePageId);
+    
+    if (!targetPage) {
+      console.log('[SectionDragEnd] Target page not found');
+      return;
+    }
+
+    const isSamePage = sourcePageId === targetPageId;
+    
+    // Don't do anything if dropping at the same position in the same page
+    if (isSamePage) {
+      const currentSections = [...targetPage.sections].sort((a, b) => a.sortOrder - b.sortOrder);
+      const currentIndex = currentSections.findIndex(s => s.id === draggedSection.id);
+      if (currentIndex === targetPosition || (currentIndex === targetPosition - 1 && targetPosition === currentSections.length)) {
+        console.log('[SectionDragEnd] Dropping at same position, no change needed');
+        return;
+      }
+    }
+
+    // Save original state for rollback
+    const originalPages = [...localPages];
+
+    // Update save status
+    setSaveStatus('saving');
+    onSaveStatusChange?.('saving');
+
+    try {
+      // Calculate new section arrays with updated sortOrder
+      const targetSections = [...targetPage.sections].sort((a, b) => a.sortOrder - b.sortOrder);
+      const sectionsToReorder = isSamePage 
+        ? targetSections.filter(s => s.id !== draggedSection.id)
+        : targetSections;
+
+      // Insert dragged section at target position
+      const newTargetSections = [...sectionsToReorder];
+      newTargetSections.splice(targetPosition, 0, {
+        ...draggedSection,
+        sortOrder: targetPosition, // Will be updated properly below
+      });
+
+      // Update sortOrder for all sections in target page (0, 1, 2, ...)
+      // The array is already in the correct order after splice, so we just need to update sortOrder
+      const updatedTargetSections = newTargetSections.map((section, index) => ({
+        ...section,
+        sortOrder: index, // Sequential sortOrder: 0, 1, 2, ...
+      }));
+
+      // Optimistically update UI
+      const updatedPages = localPages.map(page => {
+        if (page.id === targetPageId) {
+          return {
+            ...page,
+            sections: updatedTargetSections,
+          };
+        } else if (!isSamePage && page.id === sourcePageId && sourcePage) {
+          // Update source page - remove dragged section and reorder remaining sections
+          const remainingSections = sourcePage.sections
+            .filter(s => s.id !== draggedSection.id)
+            .sort((a, b) => a.sortOrder - b.sortOrder)
+            .map((section, index) => ({
+              ...section,
+              sortOrder: index, // Sequential sortOrder: 0, 1, 2, ...
+            }));
+          
+          return {
+            ...page,
+            sections: remainingSections,
+          };
+        }
+        return page;
+      });
+
+      // Optimistically update the UI immediately
+      setLocalPages(updatedPages);
+
+      // Now save to API
+      const targetUpdates = updatedTargetSections.map((section) => {
+        return client.api.sections({ id: section.id.toString() }).put({
+          componentType: section.componentType,
+          name: section.name,
+          metadata: section.metadata,
+          sortOrder: section.sortOrder,
+          pageId: targetPageId, // Always explicitly set pageId
+        });
+      });
+
+      await Promise.all(targetUpdates);
+
+      // If moving to a different page, update source page sections
+      if (!isSamePage && sourcePage) {
+        const remainingSections = sourcePage.sections
+          .filter(s => s.id !== draggedSection.id)
+          .sort((a, b) => a.sortOrder - b.sortOrder);
+        
+        const sourceUpdates = remainingSections.map((section, index) =>
+          client.api.sections({ id: section.id.toString() }).put({
+            componentType: section.componentType,
+            name: section.name,
+            metadata: section.metadata,
+            sortOrder: index,
+            pageId: sourcePageId, // Always explicitly set pageId
+          })
+        );
+
+        await Promise.all(sourceUpdates);
+      }
+
+      // Update previousPagesRef to match the optimistic update
+      // This prevents the refetch from overwriting our changes and ensures
+      // the auto-save effect doesn't interfere
+      previousPagesRef.current = updatedPages;
+
+      // Invalidate queries to trigger background refetch (but don't wait for it)
+      // The optimistic update is already in place, so we don't need to wait
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+
+      // Update save status to saved
+      setSaveStatus('saved');
+      onSaveStatusChange?.('saved');
+      setTimeout(() => {
+        setSaveStatus('idle');
+        onSaveStatusChange?.('idle');
+      }, 2000);
+    } catch (error) {
+      console.error('[SectionDragEnd] Failed to move section:', error);
+      // Rollback optimistic update on error
+      setLocalPages(originalPages);
+      previousPagesRef.current = originalPages;
+      
+      // Update save status to error
+      setSaveStatus('error');
+      onSaveStatusChange?.('error');
+      setTimeout(() => {
+        setSaveStatus('idle');
+        onSaveStatusChange?.('idle');
+      }, 5000);
+    }
+  };
+
+  // Handle drag end (for pages)
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveId(null);
 
@@ -513,8 +756,14 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
     }
 
     const activeData = active.data.current;
-    if (!activeData || activeData.type !== 'page') {
+    if (!activeData) {
       console.log('[DragEnd] Invalid active data:', activeData);
+      return;
+    }
+
+    // Handle page drags (existing logic)
+    if (activeData.type !== 'page') {
+      console.log('[DragEnd] Unknown drag type:', activeData.type);
       return;
     }
 
@@ -668,8 +917,13 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
     setLocalPages(updatedPages);
   };
 
-  // Handle drag over
+  // Handle drag over (for pages)
   const handleDragOver = (event: DragOverEvent) => {
+    // Could add visual feedback here
+  };
+
+  // Handle section drag over
+  const handleSectionDragOver = (event: DragOverEvent) => {
     // Could add visual feedback here
   };
 
@@ -856,20 +1110,25 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
     >
-      <div
-        ref={containerRef}
-        className="w-full h-full overflow-hidden relative"
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        style={{ 
-          cursor: isPanning ? 'grabbing' : (mouseDownOnEmptySpace ? 'grabbing' : 'default'), 
-          touchAction: 'none',
-          userSelect: isPanning ? 'none' : 'auto',
-          WebkitUserSelect: isPanning ? 'none' : 'auto',
-        }}
+      <SectionDragContext
+        onDragStart={handleSectionDragStart}
+        onDragEnd={handleSectionDragEnd}
+        onDragOver={handleSectionDragOver}
       >
+        <div
+          ref={containerRef}
+          className="w-full h-full overflow-hidden relative"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          style={{ 
+            cursor: isPanning ? 'grabbing' : (mouseDownOnEmptySpace ? 'grabbing' : 'default'), 
+            touchAction: 'none',
+            userSelect: isPanning ? 'none' : 'auto',
+            WebkitUserSelect: isPanning ? 'none' : 'auto',
+          }}
+        >
         {/* Toggle button for showing/hiding sections */}
         <Button
           variant="outline"
@@ -1036,6 +1295,7 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
           </div>
         </div>
       </div>
+      </SectionDragContext>
     </DragContext>
   );
 }

@@ -179,6 +179,7 @@ export function PageTreeNode({
           isSelected={selectedNodeId === node.id}
           isDragging={activeId === `page-${node.id}`}
           showSections={showSections}
+          activeId={activeId}
           onClick={() => onPageSelect?.(pageData || null)}
           onEdit={() => onPageEdit?.(pageData || null)}
           onDelete={async () => {
@@ -207,6 +208,7 @@ export function PageTreeNode({
         isSelected={selectedNodeId === node.id}
         isDragging={activeId === `page-${node.id}`}
         showSections={showSections}
+        activeId={activeId}
         onClick={() => onPageSelect?.(pageData || null)}
         onEdit={() => onPageEdit?.(pageData || null)}
         onDelete={async () => {

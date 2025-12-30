@@ -9,7 +9,9 @@ export const SectionsController = new Elysia({ prefix: "/sections", tags: ["Sect
   // Get a section
   .get("/:id", async ({ user, params }) => {
     const section = await db.query.sections.findFirst({
-      where: (sections, { eq }) => eq(sections.id, Number(params.id)),
+      where: {
+        id: Number(params.id),
+      },
       with: {
         page: {
           with: {
@@ -55,7 +57,9 @@ export const SectionsController = new Elysia({ prefix: "/sections", tags: ["Sect
   .post("", async ({ user, body }) => {
     // Verify user has access to the page
     const page = await db.query.pages.findFirst({
-      where: (pages, { eq }) => eq(pages.id, body.pageId),
+      where: {
+        id: body.pageId,
+      },
       with: {
         sitemap: {
           with: {
@@ -112,7 +116,9 @@ export const SectionsController = new Elysia({ prefix: "/sections", tags: ["Sect
   // Update a section
   .put("/:id", async ({ user, params, body }) => {
     const section = await db.query.sections.findFirst({
-      where: (sections, { eq }) => eq(sections.id, Number(params.id)),
+      where: {
+        id: Number(params.id),
+      },
       with: {
         page: {
           with: {
@@ -137,12 +143,39 @@ export const SectionsController = new Elysia({ prefix: "/sections", tags: ["Sect
       return status(403, { error: 'Forbidden' })
     }
 
+    // If pageId is provided and different, verify access to target page
+    if (body.pageId !== undefined && body.pageId !== section.pageId) {
+      const targetPage = await db.query.pages.findFirst({
+        where: {
+          id: body.pageId,
+        },
+        with: {
+          sitemap: {
+            with: {
+              project: {
+                with: {
+                  team: true,
+                }
+              }
+            }
+          }
+        }
+      })
+
+      if (!targetPage) return status(404, { error: 'Target page not found' })
+
+      if (!teamIds.includes(targetPage.sitemap.project.team.id)) {
+        return status(403, { error: 'Forbidden: No access to target page' })
+      }
+    }
+
     const updated = await db.update(schema.sections)
       .set({
         componentType: body.componentType,
         name: body.name ?? null,
         metadata: body.metadata ?? {},
         sortOrder: body.sortOrder,
+        pageId: body.pageId !== undefined ? body.pageId : section.pageId,
         updatedAt: new Date(),
       })
       .where(eq(schema.sections.id, Number(params.id)))
@@ -158,6 +191,7 @@ export const SectionsController = new Elysia({ prefix: "/sections", tags: ["Sect
       name: t.Nullable(t.String()),
       metadata: t.Any(),
       sortOrder: t.Number(),
+      pageId: t.Optional(t.Number()),
     }),
     response: {
       404: t.Object({ error: t.String() }),
@@ -176,7 +210,9 @@ export const SectionsController = new Elysia({ prefix: "/sections", tags: ["Sect
   // Delete a section
   .delete("/:id", async ({ user, params }) => {
     const section = await db.query.sections.findFirst({
-      where: (sections, { eq }) => eq(sections.id, Number(params.id)),
+      where: {
+        id: Number(params.id),
+      },
       with: {
         page: {
           with: {
@@ -216,7 +252,9 @@ export const SectionsController = new Elysia({ prefix: "/sections", tags: ["Sect
   // Reorder sections
   .put("/:id/reorder", async ({ user, params, body }) => {
     const section = await db.query.sections.findFirst({
-      where: (sections, { eq }) => eq(sections.id, Number(params.id)),
+      where: {
+        id: Number(params.id),
+      },
       with: {
         page: {
           with: {

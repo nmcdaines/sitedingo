@@ -11,16 +11,36 @@ interface DragContextProps {
 }
 
 /**
- * Custom collision detection that allows both page nodes and drop zones to be detected
+ * Custom collision detection for pages
  * Uses pointerWithin for better detection with transformed containers, then falls back to closestCenter
  */
 const customCollisionDetection: CollisionDetection = (args) => {
+  // First check if we're dragging a page (not a section)
+  const activeData = args.active.data.current;
+  if (activeData?.type !== 'page') {
+    // If not a page, return empty to let nested contexts handle it
+    return [];
+  }
+
   // First try pointerWithin for better detection with transformed containers
   const pointerCollisions = pointerWithin(args);
   
   if (pointerCollisions.length > 0) {
+    // Filter out section-related drop zones
+    const pageCollisions = pointerCollisions.filter(
+      collision => {
+        if (typeof collision.id !== 'string') return true;
+        // Ignore section drop zones
+        return !collision.id.startsWith('section-drop-') && 
+               !collision.id.startsWith('drop-section-page-');
+      }
+    );
+
+    if (pageCollisions.length === 0) return [];
+
+    // When dragging pages, prioritize page-related drop zones
     // If we have pointer collisions, prioritize drop zones
-    const dropZoneCollision = pointerCollisions.find(
+    const dropZoneCollision = pageCollisions.find(
       collision => typeof collision.id === 'string' && collision.id.startsWith('reorder-')
     );
     if (dropZoneCollision) {
@@ -28,15 +48,15 @@ const customCollisionDetection: CollisionDetection = (args) => {
     }
     
     // Then prioritize page drop zones
-    const pageDropZoneCollision = pointerCollisions.find(
+    const pageDropZoneCollision = pageCollisions.find(
       collision => typeof collision.id === 'string' && collision.id.startsWith('drop-page-')
     );
     if (pageDropZoneCollision) {
       return [pageDropZoneCollision];
     }
     
-    // Return all pointer collisions
-    return pointerCollisions;
+    // Return filtered pointer collisions
+    return pageCollisions;
   }
   
   // Fall back to closestCenter for center-based detection
@@ -44,9 +64,21 @@ const customCollisionDetection: CollisionDetection = (args) => {
   
   if (collisions.length === 0) return [];
   
+  // Filter out section-related drop zones
+  const pageCollisions = collisions.filter(
+    collision => {
+      if (typeof collision.id !== 'string') return true;
+      // Ignore section drop zones
+      return !collision.id.startsWith('section-drop-') && 
+             !collision.id.startsWith('drop-section-page-');
+    }
+  );
+
+  if (pageCollisions.length === 0) return [];
+
   // Get the closest collision
-  const closest = collisions[0];
-  if (!closest) return collisions;
+  const closest = pageCollisions[0];
+  if (!closest) return pageCollisions;
   
   // If the closest is a drop zone, prefer it (for re-ordering)
   if (typeof closest.id === 'string' && closest.id.startsWith('reorder-')) {
@@ -58,8 +90,8 @@ const customCollisionDetection: CollisionDetection = (args) => {
     return [closest];
   }
   
-  // Otherwise return all collisions
-  return collisions;
+  // Otherwise return filtered collisions
+  return pageCollisions;
 };
 
 export function DragContext({ children, onDragStart, onDragEnd, onDragOver }: DragContextProps) {

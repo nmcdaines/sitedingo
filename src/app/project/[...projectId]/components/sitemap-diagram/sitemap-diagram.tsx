@@ -392,22 +392,32 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
     // Check if clicking on a node or draggable element - if so, don't start panning
     const target = e.target as HTMLElement;
     
-    // Walk up the DOM tree to find if we're inside a draggable element
-    // dnd-kit adds data attributes, but we can also check for elements with cursor-grab
+    // Walk up the DOM tree to find if we're inside a draggable element or interactive element
     let current: HTMLElement | null = target;
     let isNodeClick = false;
     let isDropZone = false;
+    let isInteractive = false;
     
     while (current && current !== containerRef.current) {
+      // Check for data-page-node attribute (page nodes have this)
+      if (current.hasAttribute('data-page-node')) {
+        isNodeClick = true;
+        break;
+      }
       // Check for cursor-grab style (page nodes have this)
       const style = window.getComputedStyle(current);
       if (style.cursor === 'grab' || style.cursor === 'grabbing') {
         isNodeClick = true;
         break;
       }
-      // Check for buttons
-      if (current.tagName === 'BUTTON' || current.getAttribute('role') === 'button') {
-        isNodeClick = true;
+      // Check for buttons and interactive elements
+      if (current.tagName === 'BUTTON' || 
+          current.getAttribute('role') === 'button' ||
+          current.tagName === 'A' ||
+          current.tagName === 'INPUT' ||
+          current.tagName === 'TEXTAREA' ||
+          current.tagName === 'SELECT') {
+        isInteractive = true;
         break;
       }
       // Check for drop zones (they have data attributes from dnd-kit)
@@ -417,11 +427,16 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
         isDropZone = true;
         break;
       }
+      // Check if element is inside the content area (not empty space)
+      if (contentRef.current && contentRef.current.contains(current)) {
+        // If we're inside content but not on a node, it might still be empty space
+        // Continue checking
+      }
       current = current.parentElement;
     }
     
-    // If clicking on a node or drop zone, don't interfere with drag - let dnd-kit handle it
-    if ((isNodeClick || isDropZone) && e.button === 0 && !e.ctrlKey && !e.metaKey) {
+    // If clicking on a node, interactive element, or drop zone, don't interfere - let dnd-kit handle it
+    if ((isNodeClick || isDropZone || isInteractive) && e.button === 0 && !e.ctrlKey && !e.metaKey) {
       setMouseDownOnEmptySpace(false);
       return; // Don't prevent default or stop propagation - let dnd-kit handle it
     }
@@ -436,11 +451,14 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
       return;
     }
     
-    // For left click on empty space, track it but don't start panning yet
-    // We'll start panning only if the mouse moves (to avoid interfering with node clicks)
-    if (e.button === 0 && !isNodeClick && !isDropZone) {
+    // For left click on empty space, start panning immediately
+    if (e.button === 0 && !isNodeClick && !isDropZone && !isInteractive) {
+      e.preventDefault();
+      e.stopPropagation();
       setMouseDownOnEmptySpace(true);
       setMouseDownPos({ x: e.clientX, y: e.clientY });
+      setIsPanning(true);
+      setPanStart({ x: e.clientX, y: e.clientY });
     } else {
       setMouseDownOnEmptySpace(false);
     }
@@ -451,21 +469,6 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
     // Don't handle panning if a drag is active
     if (activeId) {
       return;
-    }
-    
-    // If we have a mouse down on empty space and mouse has moved, start panning
-    if (mouseDownOnEmptySpace && !isPanning) {
-      const moveDistance = Math.sqrt(
-        Math.pow(e.clientX - mouseDownPos.x, 2) + 
-        Math.pow(e.clientY - mouseDownPos.y, 2)
-      );
-      // Start panning if mouse moved more than 5 pixels (to avoid accidental panning on clicks)
-      if (moveDistance > 5) {
-        e.preventDefault();
-        e.stopPropagation();
-        setIsPanning(true);
-        setPanStart({ x: mouseDownPos.x, y: mouseDownPos.y });
-      }
     }
     
     if (isPanning) {
@@ -861,7 +864,7 @@ export function SitemapDiagram({ pages, zoom: externalZoom, onZoomChange, sitema
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
         style={{ 
-          cursor: isPanning ? 'grabbing' : 'grab', 
+          cursor: isPanning ? 'grabbing' : (mouseDownOnEmptySpace ? 'grabbing' : 'default'), 
           touchAction: 'none',
           userSelect: isPanning ? 'none' : 'auto',
           WebkitUserSelect: isPanning ? 'none' : 'auto',

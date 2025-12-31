@@ -35,7 +35,7 @@ const pageIcons: Record<string, typeof Home> = {
 export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDelete, onDuplicate, showSections = true, children, dropZone }: PageNodeProps) {
   const contextMenuRef = React.useRef<HTMLDivElement>(null);
   const { pages, activeId, activeSectionId, showSections: contextShowSections, addPage, addSection } = useSitemapDiagram();
-  
+
   // Get the actual page data from pages to ensure we have correct parentId and sortOrder
   const pageData = pages.find(p => p.id === node.id);
   const showSectionsValue = showSections !== undefined ? showSections : contextShowSections;
@@ -46,10 +46,10 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
       console.error('Missing page data for node:', node.id);
       return;
     }
-    
+
     const parentId = pageData.parentId;
     const targetPosition = insertBefore ? pageData.sortOrder : pageData.sortOrder + 1;
-    
+
     await addPage(parentId, targetPosition);
   };
 
@@ -160,7 +160,10 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
   return (
     <div
       ref={setNodeRef}
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick?.()
+      }}
       data-page-node
       style={{
         opacity: isDragging ? 0.8 : 1,
@@ -180,7 +183,7 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
             {...customListeners}
           >
             <div className={cn('absolute left-0 -translate-x-full h-full pr-[9px] hidden z-10', !isDragging && 'group-hover:block')}>
-              <Button 
+              <Button
                 variant="outline"
                 className='add-button h-full z-20'
                 onClick={(e) => {
@@ -197,8 +200,8 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
               </Button>
             </div>
             <div className={cn('absolute right-0 translate-x-full h-full pl-[9px] hidden z-10', !isDragging && 'group-hover:block')}>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className='add-button h-full z-20'
                 onClick={(e) => {
                   e.stopPropagation();
@@ -229,7 +232,7 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
 
           {/* Sections */}
           {showSectionsValue && (
-            <div 
+            <div
               ref={setSectionContainerRef}
               className={cn(
                 "space-y-3 bg-background p-2 rounded-lg shadow-sm transition-colors",
@@ -265,8 +268,8 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
                       </React.Fragment>
                     ))}
                   {/* Add section button when sections exist */}
-                  <Button 
-                    className='w-full mt-2' 
+                  <Button
+                    className='w-full mt-2'
                     variant="outline"
                     size="sm"
                     onClick={(e) => {
@@ -287,8 +290,8 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
                     isVisible={activeId?.startsWith('section-') || false}
                   />
                   <div className="flex flex-col items-center gap-2">
-                    <Button 
-                      className='w-full' 
+                    <Button
+                      className='w-full'
                       variant="outline"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -313,4 +316,3 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
     </div>
   );
 }
-

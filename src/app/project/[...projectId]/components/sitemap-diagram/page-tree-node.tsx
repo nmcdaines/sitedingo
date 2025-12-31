@@ -4,34 +4,16 @@ import React from 'react';
 import { TreeNode } from '../../lib/tree-utils';
 import { PageNode } from './page-node';
 import { EmptySpaceDropZone } from './empty-space-drop-zone';
+import { useSitemapDiagram } from './sitemap-diagram-context';
 
 interface PageTreeNodeProps {
   node: TreeNode;
-  localPages: Array<{
-    id: number;
-    name: string;
-    slug: string;
-    description: string | null;
-    sortOrder: number;
-    parentId: number | null;
-    sections: Array<{
-      id: number;
-      componentType: string;
-      name: string | null;
-      metadata: any;
-      sortOrder: number;
-    }>;
-  }>;
   selectedNodeId: number | null;
-  activeId: string | null;
-  showSections: boolean;
   onPageSelect?: (page: any) => void;
   onPageEdit?: (page: any) => void;
   onPageDelete?: (page: any) => void;
   onPageDuplicate?: (page: any) => void;
-  sitemapId?: number;
   children?: React.ReactNode;
-  onPagesChange?: (updater: (pages: PageTreeNodeProps['localPages']) => PageTreeNodeProps['localPages']) => void;
 }
 
 // Vertical line component (SVG)
@@ -109,21 +91,16 @@ function HorizontalArrow({ isFirst, isLast }: { isFirst: boolean; isLast: boolea
 
 export function PageTreeNode({
   node,
-  localPages,
   selectedNodeId,
-  activeId,
-  showSections,
   onPageSelect,
   onPageEdit,
   onPageDelete,
   onPageDuplicate,
-  onPagesChange,
-  sitemapId,
   children,
 }: PageTreeNodeProps) {
-  const pageData = localPages.find(p => p.id === node.id);
+  const { pages, activeId, showSections } = useSitemapDiagram();
+  const pageData = pages.find(p => p.id === node.id);
   const sortedChildren = [...node.children].sort((a, b) => a.sortOrder - b.sortOrder);
-  const nodePage = localPages.find(p => p.id === node.id);
   const canHaveChildren = true; // Allow all pages to have children
 
 
@@ -136,10 +113,6 @@ export function PageTreeNode({
           isSelected={selectedNodeId === node.id}
           isDragging={activeId === `page-${node.id}`}
           showSections={showSections}
-          activeId={activeId}
-          onPagesChange={onPagesChange}
-          localPages={localPages}
-          sitemapId={sitemapId}
           onClick={() => onPageSelect?.(pageData || null)}
           onEdit={() => onPageEdit?.(pageData || null)}
           onDelete={async () => {
@@ -167,11 +140,7 @@ export function PageTreeNode({
         node={node}
         isSelected={selectedNodeId === node.id}
         isDragging={activeId === `page-${node.id}`}
-        localPages={localPages}
-        sitemapId={sitemapId}
-        onPagesChange={onPagesChange}
         showSections={showSections}
-        activeId={activeId}
         onClick={() => onPageSelect?.(pageData || null)}
         onEdit={() => onPageEdit?.(pageData || null)}
         onDelete={async () => {
@@ -231,16 +200,11 @@ export function PageTreeNode({
                 {/* Recursive child node */}
                 <PageTreeNode
                   node={child}
-                  localPages={localPages}
                   selectedNodeId={selectedNodeId}
-                  activeId={activeId}
-                  showSections={showSections}
                   onPageSelect={onPageSelect}
                   onPageEdit={onPageEdit}
                   onPageDelete={onPageDelete}
                   onPageDuplicate={onPageDuplicate}
-                  sitemapId={sitemapId}
-                  onPagesChange={onPagesChange}
                 >
                   {canHaveChildren && activeId && (
                     <EmptySpaceDropZone

@@ -2,36 +2,17 @@
 
 import React, { useState, useMemo } from "react";
 import { DragEndEvent, DragStartEvent, DragOverEvent } from "@dnd-kit/core";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Eye, EyeOff } from "lucide-react";
 import {
   buildTree,
   TreeNode,
-  getSiblings,
-  calculateSortOrder,
 } from "../../lib/tree-utils";
 import { PageTreeNode } from "./page-tree-node";
 import { DragContext } from "./drag-context";
 import { SectionDragContext } from "./section-drag-context";
 import { EmptySpaceDropZone } from "./empty-space-drop-zone";
-import { client } from "@/lib/client";
 import { Button } from "@/components/ui/button";
-
-interface Page {
-  id: number;
-  name: string;
-  slug: string;
-  description: string | null;
-  sortOrder: number;
-  parentId: number | null;
-  sections: Array<{
-    id: number;
-    componentType: string;
-    name: string | null;
-    metadata: any;
-    sortOrder: number;
-  }>;
-}
+import { useSitemapDiagram, Page } from "./sitemap-diagram-context";
 
 interface SitemapDiagramProps {
   pages: Page[];
@@ -60,7 +41,25 @@ export function SitemapDiagram({
   canUndo,
   canRedo,
 }: SitemapDiagramProps) {
-  const queryClient = useQueryClient();
+  // Use context for state and mutations
+  const {
+    pages: localPages,
+    activeId,
+    activeSectionId,
+    showSections,
+    setActiveId,
+    setActiveSectionId,
+    setShowSections,
+    movePage,
+    moveSection,
+    deletePage,
+    duplicatePage,
+    undo,
+    redo,
+    canUndo: contextCanUndo,
+    canRedo: contextCanRedo,
+  } = useSitemapDiagram();
+
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(
     selectedPageId ?? null,
   );
@@ -70,19 +69,6 @@ export function SitemapDiagram({
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [mouseDownOnEmptySpace, setMouseDownOnEmptySpace] = useState(false);
   const [mouseDownPos, setMouseDownPos] = useState({ x: 0, y: 0 });
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
-  const [localPages, setLocalPages] = useState(pages);
-  const [showSections, setShowSections] = useState(true);
-
-  // Undo/Redo history for page changes
-  const [history, setHistory] = useState<Array<Page[]>>([pages]);
-  const [historyIndex, setHistoryIndex] = useState(0);
-
-  // Track previous pages state to detect actual changes
-  const previousPagesRef = React.useRef<Page[]>(pages);
-  const isInitialMountRef = React.useRef(true);
-  const isSavingRef = React.useRef(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const contentRef = React.useRef<HTMLDivElement>(null);
   const transformRef = React.useRef<HTMLDivElement>(null);
@@ -193,88 +179,13 @@ export function SitemapDiagram({
     }
   }, [pan, updateTransform]);
 
-  // Update local pages when prop changes (from server)
-  React.useEffect(() => {
-    // Only update if pages actually changed (compare by ID, not index)
-    const pagesMap = new Map(pages.map((p) => [p.id, p]));
-    const prevPagesMap = new Map(
-      previousPagesRef.current.map((p) => [p.id, p]),
-    );
-
-    const pagesChanged =
-      pages.length !== previousPagesRef.current.length ||
-      pages.some((page) => {
-        const prev = prevPagesMap.get(page.id);
-        if (!prev) return true;
-
-        // Check page-level changes
-        if (
-          page.parentId !== prev.parentId ||
-          page.sortOrder !== prev.sortOrder ||
-          page.name !== prev.name ||
-          page.slug !== prev.slug
-        ) {
-          return true;
-        }
-
-        // Check section changes - compare sections by ID and sortOrder
-        const prevSectionsMap = new Map(prev.sections.map((s) => [s.id, s]));
-
-        // Check if section count changed
-        if (page.sections.length !== prev.sections.length) return true;
-
-        // Check if any section changed (sections don't have pageId in the interface, it's implicit from the page)
-        const sectionsChanged =
-          page.sections.some((section) => {
-            const prevSection = prevSectionsMap.get(section.id);
-            return (
-              !prevSection ||
-              section.sortOrder !== prevSection.sortOrder ||
-              section.componentType !== prevSection.componentType ||
-              section.name !== prevSection.name
-            );
-          }) ||
-          prev.sections.some(
-            (prevSection) =>
-              !page.sections.some((s) => s.id === prevSection.id),
-          );
-
-        return sectionsChanged;
-      }) ||
-      previousPagesRef.current.some((prev) => !pagesMap.has(prev.id));
-
-    if (pagesChanged) {
-      // Ensure sections are sorted by sortOrder when updating from server
-      const pagesWithSortedSections = pages.map((page) => ({
-        ...page,
-        sections: [...page.sections].sort((a, b) => a.sortOrder - b.sortOrder),
-      }));
-
-      setLocalPages(pagesWithSortedSections);
-      setHistory([pagesWithSortedSections]);
-      setHistoryIndex(0);
-      previousPagesRef.current = pagesWithSortedSections;
-    }
-  }, [pages]);
-
-  // Update undo/redo availability
-  const currentCanUndo = historyIndex > 0;
-  const currentCanRedo = historyIndex < history.length - 1;
-
-  React.useEffect(() => {
-    // Notify parent of undo/redo state changes
-    // This is a simplified approach - in a real app you'd use a callback
-  }, [currentCanUndo, currentCanRedo]);
-
   // Handle undo/redo keyboard shortcuts
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
-        if (currentCanUndo) {
-          const previousState = history[historyIndex - 1];
-          setLocalPages(previousState);
-          setHistoryIndex(historyIndex - 1);
+        if (contextCanUndo) {
+          undo();
           onUndo?.();
         }
       } else if (
@@ -282,10 +193,8 @@ export function SitemapDiagram({
         (e.key === "y" || (e.key === "z" && e.shiftKey))
       ) {
         e.preventDefault();
-        if (currentCanRedo) {
-          const nextState = history[historyIndex + 1];
-          setLocalPages(nextState);
-          setHistoryIndex(historyIndex + 1);
+        if (contextCanRedo) {
+          redo();
           onRedo?.();
         }
       }
@@ -293,7 +202,7 @@ export function SitemapDiagram({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [history, historyIndex, currentCanUndo, currentCanRedo, onUndo, onRedo]);
+  }, [contextCanUndo, contextCanRedo, undo, redo, onUndo, onRedo]);
 
   // Build tree structure (no layout calculation needed for CSS Grid)
   const tree = useMemo(() => {
@@ -613,440 +522,12 @@ export function SitemapDiagram({
 
   // Handle section drag end
   const handleSectionDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveSectionId(null);
-    setActiveId(null);
-
-    if (!over) {
-      console.log("[SectionDragEnd] No over target");
-      return;
-    }
-
-    const activeData = active.data.current;
-    if (!activeData || activeData.type !== "section") {
-      console.log("[SectionDragEnd] Invalid active data:", activeData);
-      return;
-    }
-
-    // Handle section drags
-    const draggedSection = activeData.section as {
-      id: number;
-      componentType: string;
-      name: string | null;
-      metadata: any;
-      sortOrder: number;
-    };
-    const sourcePageId = activeData.pageId as number;
-    const overId = over.id as string;
-
-    console.log(
-      "[SectionDragEnd] Dragging section",
-      draggedSection.id,
-      "from page",
-      sourcePageId,
-      "over",
-      overId,
-    );
-
-    let targetPageId: number;
-    let targetPosition: number;
-
-    // Check if dropped on a section drop zone
-    if (overId.startsWith("section-drop-")) {
-      // Parse: section-drop-{pageId}-{position}
-      const match = overId.match(/^section-drop-(\d+)-(\d+)$/);
-      if (!match) {
-        console.log("[SectionDragEnd] Invalid section drop zone ID:", overId);
-        return;
-      }
-
-      targetPageId = parseInt(match[1]);
-      targetPosition = parseInt(match[2]);
-    } else if (overId.startsWith("drop-section-page-")) {
-      // Dropped on the page container itself - append to end
-      const match = overId.match(/^drop-section-page-(\d+)$/);
-      if (!match) {
-        console.log("[SectionDragEnd] Invalid section page drop ID:", overId);
-        return;
-      }
-
-      targetPageId = parseInt(match[1]);
-      const targetPageForLength = localPages.find((p) => p.id === targetPageId);
-      if (!targetPageForLength) {
-        console.log("[SectionDragEnd] Target page not found");
-        return;
-      }
-      targetPosition = targetPageForLength.sections.length;
-    } else {
-      console.log(
-        "[SectionDragEnd] Section not dropped on valid target:",
-        overId,
-      );
-      return;
-    }
-
-    // Get pages
-    const targetPage = localPages.find((p) => p.id === targetPageId);
-    const sourcePage = localPages.find((p) => p.id === sourcePageId);
-
-    if (!targetPage) {
-      console.log("[SectionDragEnd] Target page not found");
-      return;
-    }
-
-    const isSamePage = sourcePageId === targetPageId;
-
-    // Don't do anything if dropping at the same position in the same page
-    if (isSamePage) {
-      const currentSections = [...targetPage.sections].sort(
-        (a, b) => a.sortOrder - b.sortOrder,
-      );
-      const currentIndex = currentSections.findIndex(
-        (s) => s.id === draggedSection.id,
-      );
-      if (
-        currentIndex === targetPosition ||
-        (currentIndex === targetPosition - 1 &&
-          targetPosition === currentSections.length)
-      ) {
-        console.log(
-          "[SectionDragEnd] Dropping at same position, no change needed",
-        );
-        return;
-      }
-    }
-
-    // Save original state for rollback
-    const originalPages = [...localPages];
-
-    // Update save status
-    setSaveStatus("saving");
-    onSaveStatusChange?.("saving");
-
-    try {
-      // Calculate new section arrays with updated sortOrder
-      const targetSections = [...targetPage.sections].sort(
-        (a, b) => a.sortOrder - b.sortOrder,
-      );
-      const sectionsToReorder = isSamePage
-        ? targetSections.filter((s) => s.id !== draggedSection.id)
-        : targetSections;
-
-      // Insert dragged section at target position
-      const newTargetSections = [...sectionsToReorder];
-      newTargetSections.splice(targetPosition, 0, {
-        ...draggedSection,
-        sortOrder: targetPosition, // Will be updated properly below
-      });
-
-      // Update sortOrder for all sections in target page (0, 1, 2, ...)
-      // The array is already in the correct order after splice, so we just need to update sortOrder
-      const updatedTargetSections = newTargetSections.map((section, index) => ({
-        ...section,
-        sortOrder: index, // Sequential sortOrder: 0, 1, 2, ...
-      }));
-
-      // Optimistically update UI
-      const updatedPages = localPages.map((page) => {
-        if (page.id === targetPageId) {
-          return {
-            ...page,
-            sections: updatedTargetSections,
-          };
-        } else if (!isSamePage && page.id === sourcePageId && sourcePage) {
-          // Update source page - remove dragged section and reorder remaining sections
-          const remainingSections = sourcePage.sections
-            .filter((s) => s.id !== draggedSection.id)
-            .sort((a, b) => a.sortOrder - b.sortOrder)
-            .map((section, index) => ({
-              ...section,
-              sortOrder: index, // Sequential sortOrder: 0, 1, 2, ...
-            }));
-
-          return {
-            ...page,
-            sections: remainingSections,
-          };
-        }
-        return page;
-      });
-
-      // Optimistically update the UI immediately
-      setLocalPages(updatedPages);
-
-      // Now save to API
-      const targetUpdates = updatedTargetSections.map((section) => {
-        return client.api.sections({ id: section.id.toString() }).put({
-          componentType: section.componentType,
-          name: section.name,
-          metadata: section.metadata,
-          sortOrder: section.sortOrder,
-          pageId: targetPageId, // Always explicitly set pageId
-        });
-      });
-
-      await Promise.all(targetUpdates);
-
-      // If moving to a different page, update source page sections
-      if (!isSamePage && sourcePage) {
-        const remainingSections = sourcePage.sections
-          .filter((s) => s.id !== draggedSection.id)
-          .sort((a, b) => a.sortOrder - b.sortOrder);
-
-        const sourceUpdates = remainingSections.map((section, index) =>
-          client.api.sections({ id: section.id.toString() }).put({
-            componentType: section.componentType,
-            name: section.name,
-            metadata: section.metadata,
-            sortOrder: index,
-            pageId: sourcePageId, // Always explicitly set pageId
-          }),
-        );
-
-        await Promise.all(sourceUpdates);
-      }
-
-      // Update previousPagesRef to match the optimistic update
-      // This prevents the refetch from overwriting our changes and ensures
-      // the auto-save effect doesn't interfere
-      previousPagesRef.current = updatedPages;
-
-      // Invalidate queries to trigger background refetch (but don't wait for it)
-      // The optimistic update is already in place, so we don't need to wait
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-
-      // Update save status to saved
-      setSaveStatus("saved");
-      onSaveStatusChange?.("saved");
-      setTimeout(() => {
-        setSaveStatus("idle");
-        onSaveStatusChange?.("idle");
-      }, 2000);
-    } catch (error) {
-      console.error("[SectionDragEnd] Failed to move section:", error);
-      // Rollback optimistic update on error
-      setLocalPages(originalPages);
-      previousPagesRef.current = originalPages;
-
-      // Update save status to error
-      setSaveStatus("error");
-      onSaveStatusChange?.("error");
-      setTimeout(() => {
-        setSaveStatus("idle");
-        onSaveStatusChange?.("idle");
-      }, 5000);
-    }
+    await moveSection(event);
   };
 
   // Handle drag end (for pages)
   const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveId(null);
-
-    if (!over) {
-      console.log("[DragEnd] No over target");
-      return;
-    }
-
-    const activeData = active.data.current;
-    if (!activeData) {
-      console.log("[DragEnd] Invalid active data:", activeData);
-      return;
-    }
-
-    // Handle page drags (existing logic)
-    if (activeData.type !== "page") {
-      console.log("[DragEnd] Unknown drag type:", activeData.type);
-      return;
-    }
-
-    const draggedNode = activeData.node as TreeNode;
-    const overId = over.id as string;
-    console.log("[DragEnd] Dragging page", draggedNode.id, "over", overId);
-
-    let updatedPages: Page[] = localPages;
-
-    // Case 1: Dropped on a page node (nesting)
-    // Handle both 'drop-page-{id}' (droppable zone) and 'page-{id}' (draggable element)
-    let newParentId: number | null = null;
-    if (overId.startsWith("drop-page-")) {
-      newParentId = parseInt(overId.replace("drop-page-", ""));
-    } else if (overId.startsWith("page-")) {
-      // Collision detection picked up the draggable element instead of droppable zone
-      newParentId = parseInt(overId.replace("page-", ""));
-    }
-
-    if (newParentId !== null) {
-      console.log("[DragEnd] Dropping on page node, newParentId:", newParentId);
-
-      // Don't allow dropping on itself or its children
-      if (draggedNode.id === newParentId) {
-        console.log("[DragEnd] Cannot drop on itself");
-        return;
-      }
-
-      // Check if dropping on a descendant
-      function isDescendant(node: TreeNode, targetId: number): boolean {
-        if (node.id === targetId) return true;
-        return node.children.some((child) => isDescendant(child, targetId));
-      }
-      if (isDescendant(draggedNode, newParentId)) {
-        console.log("[DragEnd] Cannot drop on descendant");
-        return;
-      }
-
-      // Get siblings of the new parent to calculate sort order
-      const newSiblings = getSiblings(localPages, newParentId, draggedNode.id);
-      const newSortOrder =
-        newSiblings.length > 0
-          ? Math.max(...newSiblings.map((s) => s.sortOrder)) + 1
-          : 0;
-
-      console.log(
-        "[DragEnd] Updating page",
-        draggedNode.id,
-        "to parent",
-        newParentId,
-        "sortOrder",
-        newSortOrder,
-      );
-
-      // Update the page's parent and sort order
-      updatedPages = localPages.map((page) => {
-        if (page.id === draggedNode.id) {
-          return { ...page, parentId: newParentId, sortOrder: newSortOrder };
-        }
-        return page;
-      });
-    }
-    // Case 2: Dropped on an empty space drop zone (re-ordering)
-    else if (overId.startsWith("reorder-")) {
-      // Parse drop zone ID: format is "reorder-{parentId}-{position}"
-      // For root: "reorder-root-0"
-      // For children: "reorder-123-0"
-      const match = overId.match(/^reorder-(root|\d+)-(\d+)$/);
-      if (!match) {
-        console.log("[DragEnd] Invalid reorder drop zone ID:", overId);
-        return;
-      }
-
-      const parentIdStr = match[1];
-      const position = parseInt(match[2]);
-      const targetParentId =
-        parentIdStr === "root" ? null : parseInt(parentIdStr);
-
-      const draggedPage = localPages.find((p) => p.id === draggedNode.id);
-      if (!draggedPage) {
-        console.log("[DragEnd] Dragged page not found");
-        return;
-      }
-
-      // Don't allow a page to be its own parent
-      if (targetParentId !== null && targetParentId === draggedNode.id) {
-        console.log("[DragEnd] Cannot drop on itself");
-        return;
-      }
-
-      // Check if this is actually a meaningful move
-      // Don't allow dropping on itself (if moving within same parent at same position)
-      if (draggedPage.parentId === targetParentId) {
-        const currentSiblings = getSiblings(
-          localPages,
-          targetParentId,
-          draggedNode.id,
-        );
-        const currentIndex = currentSiblings.findIndex(
-          (s) => s.sortOrder > draggedPage.sortOrder,
-        );
-        const effectiveCurrentIndex =
-          currentIndex === -1 ? currentSiblings.length : currentIndex;
-
-        // If dropping at the same position, do nothing
-        if (effectiveCurrentIndex === position) {
-          console.log("[DragEnd] Dropping at same position, no change needed");
-          return;
-        }
-      }
-
-      console.log(
-        "[DragEnd] Reordering page",
-        draggedNode.id,
-        "to parent",
-        targetParentId,
-        "at position",
-        position,
-      );
-
-      // Calculate new sort order and sibling IDs
-      const { sortOrder, siblingIds } = calculateSortOrder(
-        localPages,
-        draggedNode.id,
-        targetParentId,
-        position,
-      );
-
-      // Get old parent siblings (to update their sort orders after removal)
-      const oldParentId = draggedPage.parentId;
-      const oldSiblings = getSiblings(localPages, oldParentId, draggedNode.id);
-      const oldSiblingIds = oldSiblings.map((s) => s.id);
-
-      // Update all affected pages
-      updatedPages = localPages.map((page) => {
-        if (page.id === draggedNode.id) {
-          // Update dragged page
-          return { ...page, parentId: targetParentId, sortOrder };
-        } else if (siblingIds.includes(page.id)) {
-          // Update new sibling sort orders
-          const newIndex = siblingIds.indexOf(page.id);
-          return { ...page, sortOrder: newIndex };
-        } else if (
-          oldSiblingIds.includes(page.id) &&
-          oldParentId !== targetParentId
-        ) {
-          // Update old sibling sort orders (only if moving to different parent)
-          const oldIndex = oldSiblingIds.indexOf(page.id);
-          return { ...page, sortOrder: oldIndex };
-        }
-        return page;
-      });
-    } else {
-      // Unknown drop target, do nothing
-      console.log("[DragEnd] Unknown drop target:", overId);
-      return;
-    }
-
-    // Check if pages actually changed (compare by ID, not index)
-    const hasChanges =
-      updatedPages.some((page) => {
-        const original = localPages.find((p) => p.id === page.id);
-        if (!original) return true; // New page
-        return (
-          page.parentId !== original.parentId ||
-          page.sortOrder !== original.sortOrder
-        );
-      }) || updatedPages.length !== localPages.length;
-
-    if (!hasChanges) {
-      console.log("[DragEnd] No changes to apply");
-      return;
-    }
-
-    console.log(
-      "[DragEnd] Applying changes, updated pages:",
-      updatedPages.map((p) => ({
-        id: p.id,
-        parentId: p.parentId,
-        sortOrder: p.sortOrder,
-      })),
-    );
-
-    // Add to history
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(updatedPages);
-    setHistory(newHistory.slice(-50)); // Keep last 50 states
-    setHistoryIndex(newHistory.length - 1);
-
-    setLocalPages(updatedPages);
+    await movePage(event);
   };
 
   // Handle drag over (for pages)
@@ -1059,223 +540,6 @@ export function SitemapDiagram({
     // Could add visual feedback here
   };
 
-  // Handle adding a new page
-  const handleAddPage = async (parentId: number | null, position: number) => {
-    if (!sitemapId) return;
-
-    try {
-      // Get siblings sorted by sortOrder
-      const siblings = localPages
-        .filter((p) => p.parentId === parentId)
-        .sort((a, b) => a.sortOrder - b.sortOrder);
-
-      // Clamp position to valid range
-      const validPosition = Math.max(0, Math.min(position, siblings.length));
-
-      // Find siblings that need to be shifted (those with sortOrder >= validPosition)
-      const siblingsToShift = siblings.filter(
-        (s) => s.sortOrder >= validPosition,
-      );
-
-      // Create the new page with sortOrder = validPosition
-      const newPage = await client.api.pages.post({
-        sitemapId: sitemapId,
-        parentId: parentId,
-        name: "New Page",
-        slug: `new-page-${Date.now()}`,
-        description: null,
-        sortOrder: validPosition,
-      });
-
-      // Shift all affected siblings by incrementing their sortOrder
-      await Promise.all(
-        siblingsToShift.map((sibling) =>
-          client.api.pages({ id: sibling.id.toString() }).put({
-            name: sibling.name,
-            slug: sibling.slug,
-            description: sibling.description,
-            parentId: sibling.parentId,
-            sortOrder: sibling.sortOrder + 1,
-          }),
-        ),
-      );
-
-      // Refresh pages - this should come from parent
-      window.location.reload();
-    } catch (error) {
-      console.error("Failed to create page:", error);
-    }
-  };
-
-  // Auto-save mutation
-  const savePageMutation = useMutation({
-    mutationFn: async (page: {
-      id: number;
-      parentId: number | null;
-      sortOrder: number;
-    }) => {
-      const pageData = localPages.find((p) => p.id === page.id);
-      if (!pageData) throw new Error("Page not found");
-
-      console.log(
-        "[SaveMutation] Saving page",
-        page.id,
-        "with parentId",
-        pageData.parentId,
-        "sortOrder",
-        pageData.sortOrder,
-      );
-
-      const result = await client.api.pages({ id: page.id.toString() }).put({
-        name: pageData.name,
-        slug: pageData.slug,
-        description: pageData.description,
-        parentId: pageData.parentId,
-        sortOrder: pageData.sortOrder,
-      });
-
-      console.log("[SaveMutation] Save result:", result);
-      return result;
-    },
-  });
-
-  // Track save status
-  const [saveStatus, setSaveStatus] = useState<
-    "idle" | "saving" | "saved" | "error"
-  >("idle");
-
-  // Auto-save when pages change
-  React.useEffect(() => {
-    // Skip initial mount
-    if (isInitialMountRef.current) {
-      isInitialMountRef.current = false;
-      previousPagesRef.current = localPages;
-      console.log("[AutoSave] Skipping initial mount");
-      return;
-    }
-
-    console.log(
-      "[AutoSave] Checking for changes, localPages:",
-      localPages.map((p) => ({
-        id: p.id,
-        parentId: p.parentId,
-        sortOrder: p.sortOrder,
-      })),
-    );
-    console.log(
-      "[AutoSave] Previous pages:",
-      previousPagesRef.current.map((p) => ({
-        id: p.id,
-        parentId: p.parentId,
-        sortOrder: p.sortOrder,
-      })),
-    );
-
-    // Find pages that actually changed
-    const changedPages = localPages.filter((page) => {
-      const originalPage = previousPagesRef.current.find(
-        (p) => p.id === page.id,
-      );
-      if (!originalPage) return false; // New page, but we don't handle creation here
-
-      // Only save if parentId or sortOrder actually changed
-      const hasChanges =
-        page.parentId !== originalPage.parentId ||
-        page.sortOrder !== originalPage.sortOrder;
-      if (hasChanges) {
-        console.log("[AutoSave] Page", page.id, "changed:", {
-          parentId: { from: originalPage.parentId, to: page.parentId },
-          sortOrder: { from: originalPage.sortOrder, to: page.sortOrder },
-        });
-      }
-      return hasChanges;
-    });
-
-    // If no changes, don't save
-    if (changedPages.length === 0) {
-      console.log("[AutoSave] No changes detected");
-      previousPagesRef.current = localPages;
-      return;
-    }
-
-    console.log(
-      "[AutoSave] Found",
-      changedPages.length,
-      "changed pages:",
-      changedPages.map((p) => p.id),
-    );
-
-    // If already saving, skip (will be handled by next effect run)
-    if (isSavingRef.current) {
-      console.log("[AutoSave] Already saving, skipping");
-      return;
-    }
-
-    console.log("[AutoSave] Starting save process");
-
-    // Save immediately
-    (async () => {
-      isSavingRef.current = true;
-
-      // Re-check all pages for changes (in case more changes happened)
-      const stillChanged = localPages.filter((page) => {
-        const originalPage = previousPagesRef.current.find(
-          (p) => p.id === page.id,
-        );
-        if (!originalPage) return false; // New page, but we don't handle creation here
-
-        // Only save if parentId or sortOrder actually changed
-        return (
-          page.parentId !== originalPage.parentId ||
-          page.sortOrder !== originalPage.sortOrder
-        );
-      });
-
-      if (stillChanged.length === 0) {
-        previousPagesRef.current = localPages;
-        isSavingRef.current = false;
-        return;
-      }
-
-      setSaveStatus("saving");
-      onSaveStatusChange?.("saving");
-
-      try {
-        await Promise.all(
-          stillChanged.map((page) => {
-            const pageData = localPages.find((p) => p.id === page.id)!;
-            return savePageMutation.mutateAsync({
-              id: page.id,
-              parentId: pageData.parentId,
-              sortOrder: pageData.sortOrder,
-            });
-          }),
-        );
-
-        // Invalidate queries to trigger re-fetch of updated data
-        queryClient.invalidateQueries({ queryKey: ["projects"] });
-
-        // Update previous pages ref after successful save
-        previousPagesRef.current = localPages;
-
-        setSaveStatus("saved");
-        onSaveStatusChange?.("saved");
-        setTimeout(() => {
-          setSaveStatus("idle");
-          onSaveStatusChange?.("idle");
-        }, 2000);
-      } catch (error) {
-        setSaveStatus("error");
-        onSaveStatusChange?.("error");
-        setTimeout(() => {
-          setSaveStatus("idle");
-          onSaveStatusChange?.("idle");
-        }, 5000);
-      } finally {
-        isSavingRef.current = false;
-      }
-    })();
-  }, [localPages, onSaveStatusChange, queryClient, savePageMutation]);
 
   return (
     <DragContext
@@ -1394,10 +658,7 @@ export function SitemapDiagram({
                     >
                       <PageTreeNode
                         node={rootNode}
-                        localPages={localPages}
                         selectedNodeId={selectedNodeId}
-                        activeId={activeId}
-                        showSections={showSections}
                         onPageSelect={(page) => {
                           setSelectedNodeId(page?.id || null);
                           onPageSelect?.(page);
@@ -1413,41 +674,18 @@ export function SitemapDiagram({
                               "Are you sure you want to delete this page?",
                             )
                           ) {
-                            try {
-                              await client.api
-                                .pages({ id: page.id.toString() })
-                                .delete();
-                              setLocalPages(
-                                localPages.filter((p) => p.id !== page.id),
-                              );
-                              if (selectedNodeId === page.id) {
-                                setSelectedNodeId(null);
-                                onPageSelect?.(null);
-                              }
-                            } catch (error) {
-                              console.error("Failed to delete page:", error);
+                            await deletePage(page.id);
+                            if (selectedNodeId === page.id) {
+                              setSelectedNodeId(null);
+                              onPageSelect?.(null);
                             }
                           }
                         }}
                         onPageDuplicate={async (page) => {
                           if (page) {
-                            try {
-                              const newPage = await client.api.pages.post({
-                                sitemapId: sitemapId || 0,
-                                parentId: page.parentId,
-                                name: `${page.name} (Copy)`,
-                                slug: `${page.slug}-copy`,
-                                description: page.description,
-                                sortOrder: page.sortOrder + 1,
-                              });
-                              // Refresh pages - this should come from parent
-                              window.location.reload();
-                            } catch (error) {
-                              console.error("Failed to duplicate page:", error);
-                            }
+                            await duplicatePage(page);
                           }
                         }}
-                        sitemapId={sitemapId}
                       />
                     </div>,
 

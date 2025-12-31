@@ -1,0 +1,17 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignoreExportsUsedInFile": {
+    "interface": true,
+    "type": true
+  },
+  "tags": ["-lintignore"],
+  "ignoreFiles": [
+    "src/server/prompts/_template/index.ts",
+    "src/components/ui/*"
+  ],
+  "ignoreBinaries": ["osv-scanner"],
+  "ignoreDependencies": ["postcss"],
+  "ignoreIssues": {
+    "src/components/ui/**": ["exports"]
+  }
+}

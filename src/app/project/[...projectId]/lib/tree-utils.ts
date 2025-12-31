@@ -30,7 +30,7 @@ export function buildTree(pages: Page[]): TreeNode[] {
   const rootNodes: TreeNode[] = [];
 
   // First pass: create all nodes
-  pages.forEach(page => {
+  pages.forEach((page) => {
     pageMap.set(page.id, {
       ...page,
       children: [],
@@ -41,7 +41,7 @@ export function buildTree(pages: Page[]): TreeNode[] {
   });
 
   // Second pass: build parent-child relationships
-  pages.forEach(page => {
+  pages.forEach((page) => {
     const node = pageMap.get(page.id)!;
     if (page.parentId === null) {
       rootNodes.push(node);
@@ -106,9 +106,10 @@ function calculateSubtreeWidth(node: TreeNode): number {
  */
 function calculateNodeHeight(node: TreeNode): number {
   const headerHeight = 60;
-  const sectionAreaHeight = node.sections.length > 0
-    ? node.sections.length * 50 + (node.sections.length - 1) * 8 + 16
-    : 0;
+  const sectionAreaHeight =
+    node.sections.length > 0
+      ? node.sections.length * 50 + (node.sections.length - 1) * 8 + 16
+      : 0;
   return headerHeight + sectionAreaHeight;
 }
 
@@ -119,14 +120,14 @@ function positionNode(
   node: TreeNode,
   startX: number,
   y: number,
-  level: number
+  level: number,
 ): void {
   const nodeHeight = calculateNodeHeight(node);
   const subtreeWidth = calculateSubtreeWidth(node);
 
   // Center the node above its children
   const nodeX = startX + (subtreeWidth - LAYOUT.NODE_WIDTH) / 2;
-  
+
   node.position = { x: nodeX, y };
   node.width = LAYOUT.NODE_WIDTH;
   node.height = nodeHeight;
@@ -145,42 +146,15 @@ function positionNode(
 }
 
 /**
- * Auto-layouts a tree structure
- */
-export function autoLayoutTree(tree: TreeNode[]): TreeNode[] {
-  let currentX = LAYOUT.CANVAS_PADDING;
-  const startY = LAYOUT.CANVAS_PADDING;
-
-  tree.forEach((node) => {
-    const subtreeWidth = calculateSubtreeWidth(node);
-    positionNode(node, currentX, startY, 0);
-    currentX += subtreeWidth + LAYOUT.HORIZONTAL_SPACING;
-  });
-
-  return tree;
-}
-
-/**
- * Gets all nodes in a tree (flattened)
- */
-export function getAllNodes(tree: TreeNode[]): TreeNode[] {
-  const nodes: TreeNode[] = [];
-  
-  function traverse(node: TreeNode) {
-    nodes.push(node);
-    node.children.forEach(traverse);
-  }
-  
-  tree.forEach(traverse);
-  return nodes;
-}
-
-/**
  * Gets all siblings of a page (pages with the same parentId)
  */
-export function getSiblings(pages: Page[], parentId: number | null, excludeId?: number): Page[] {
+export function getSiblings(
+  pages: Page[],
+  parentId: number | null,
+  excludeId?: number,
+): Page[] {
   return pages
-    .filter(page => page.parentId === parentId && page.id !== excludeId)
+    .filter((page) => page.parentId === parentId && page.id !== excludeId)
     .sort((a, b) => a.sortOrder - b.sortOrder);
 }
 
@@ -192,30 +166,33 @@ export function calculateSortOrder(
   pages: Page[],
   draggedPageId: number,
   targetParentId: number | null,
-  insertPosition: number
+  insertPosition: number,
 ): { sortOrder: number; siblingIds: number[] } {
   // Get all siblings (including the dragged page if it's moving within the same parent)
-  const draggedPage = pages.find(p => p.id === draggedPageId);
+  const draggedPage = pages.find((p) => p.id === draggedPageId);
   if (!draggedPage) {
-    throw new Error('Dragged page not found');
+    throw new Error("Dragged page not found");
   }
 
   const isMovingWithinSameParent = draggedPage.parentId === targetParentId;
-  
+
   // Get siblings excluding the dragged page
-  const siblings = getSiblings(pages, targetParentId, isMovingWithinSameParent ? draggedPageId : undefined);
-  
+  const siblings = getSiblings(
+    pages,
+    targetParentId,
+    isMovingWithinSameParent ? draggedPageId : undefined,
+  );
+
   // Clamp insert position to valid range
   const validPosition = Math.max(0, Math.min(insertPosition, siblings.length));
-  
+
   // Insert the dragged page at the specified position
   const newSiblings = [...siblings];
   newSiblings.splice(validPosition, 0, draggedPage);
-  
+
   // Calculate new sort orders (simple sequential: 0, 1, 2, ...)
-  const siblingIds = newSiblings.map(s => s.id);
+  const siblingIds = newSiblings.map((s) => s.id);
   const sortOrder = validPosition;
-  
+
   return { sortOrder, siblingIds };
 }
-

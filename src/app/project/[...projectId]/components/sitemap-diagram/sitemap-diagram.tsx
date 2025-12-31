@@ -9,7 +9,6 @@ import {
 } from "../../lib/tree-utils";
 import { PageTreeNode } from "./page-tree-node";
 import { DragContext } from "./drag-context";
-import { SectionDragContext } from "./section-drag-context";
 import { EmptySpaceDropZone } from "./empty-space-drop-zone";
 import { Button } from "@/components/ui/button";
 import { useSitemapDiagram, Page } from "./sitemap-diagram-context";
@@ -498,45 +497,36 @@ export function SitemapDiagram({
     setMouseDownOnEmptySpace(false);
   };
 
-  // Handle drag start (for pages)
+  // Handle drag start (for both pages and sections)
   const handleDragStart = (event: DragStartEvent) => {
     const activeData = event.active.data.current;
-    // Only handle page drags in the main context
-    if (activeData?.type === "page") {
-      setActiveId(event.active.id as string);
-      // Stop any panning when drag starts
-      setIsPanning(false);
-      setMouseDownOnEmptySpace(false);
-    }
-  };
-
-  // Handle section drag start
-  const handleSectionDragStart = (event: DragStartEvent) => {
     const id = event.active.id as string;
-    setActiveSectionId(id);
-    setActiveId(id); // Also set main activeId for UI updates
+    
+    if (activeData?.type === "page") {
+      setActiveId(id);
+    } else if (activeData?.type === "section") {
+      setActiveSectionId(id);
+      setActiveId(id); // Also set main activeId for UI updates
+    }
+    
     // Stop any panning when drag starts
     setIsPanning(false);
     setMouseDownOnEmptySpace(false);
   };
 
-  // Handle section drag end
-  const handleSectionDragEnd = async (event: DragEndEvent) => {
-    await moveSection(event);
-  };
-
-  // Handle drag end (for pages)
+  // Handle drag end (for both pages and sections)
   const handleDragEnd = async (event: DragEndEvent) => {
-    await movePage(event);
+    const activeData = event.active.data.current;
+    
+    if (activeData?.type === "page") {
+      await movePage(event);
+    } else if (activeData?.type === "section") {
+      await moveSection(event);
+    }
   };
 
-  // Handle drag over (for pages)
+  // Handle drag over (for both pages and sections)
   const handleDragOver = (event: DragOverEvent) => {
-    // Could add visual feedback here
-  };
-
-  // Handle section drag over
-  const handleSectionDragOver = (event: DragOverEvent) => {
     // Could add visual feedback here
   };
 
@@ -547,29 +537,24 @@ export function SitemapDiagram({
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
     >
-      <SectionDragContext
-        onDragStart={handleSectionDragStart}
-        onDragEnd={handleSectionDragEnd}
-        onDragOver={handleSectionDragOver}
-      >
-        <div
-          ref={containerRef}
-          className="w-full h-full overflow-hidden relative"
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseUp}
-          style={{
-            cursor: isPanning
+      <div
+        ref={containerRef}
+        className="w-full h-full overflow-hidden relative"
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        style={{
+          cursor: isPanning
+            ? "grabbing"
+            : mouseDownOnEmptySpace
               ? "grabbing"
-              : mouseDownOnEmptySpace
-                ? "grabbing"
-                : "default",
-            touchAction: "none",
-            userSelect: isPanning ? "none" : "auto",
-            WebkitUserSelect: isPanning ? "none" : "auto",
-          }}
-        >
+              : "default",
+          touchAction: "none",
+          userSelect: isPanning ? "none" : "auto",
+          WebkitUserSelect: isPanning ? "none" : "auto",
+        }}
+      >
           {/* Toggle button for showing/hiding sections */}
           <Button
             variant="outline"
@@ -718,7 +703,6 @@ export function SitemapDiagram({
             </div>
           </div>
         </div>
-      </SectionDragContext>
     </DragContext>
   );
 }

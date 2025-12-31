@@ -17,14 +17,23 @@ interface Page {
   parentId: number | null;
 }
 
+interface Project {
+  id: number;
+  name: string;
+  description: string | null;
+}
+
 interface PropertyPanelProps {
   page: Page | null;
+  project: Project | null;
   isOpen: boolean;
+  isDragging?: boolean;
   onClose: () => void;
   onDelete?: () => void;
 }
 
-export function PropertyPanel({ page, isOpen, onClose, onDelete }: PropertyPanelProps) {
+export function PropertyPanel({ page, project, isOpen, isDragging = false, onClose, onDelete }: PropertyPanelProps) {
+  const isEditingProject = !page && project !== null;
   const [formData, setFormData] = useState({
     name: '',
     slug: '',
@@ -39,8 +48,14 @@ export function PropertyPanel({ page, isOpen, onClose, onDelete }: PropertyPanel
         slug: page.slug,
         description: page.description || '',
       });
+    } else if (project) {
+      setFormData({
+        name: project.name,
+        slug: '',
+        description: project.description || '',
+      });
     }
-  }, [page]);
+  }, [page, project]);
 
   const updatePageMutation = useMutation({
     mutationFn: async (data: { name: string; slug: string; description: string | null }) => {
@@ -51,6 +66,19 @@ export function PropertyPanel({ page, isOpen, onClose, onDelete }: PropertyPanel
         description: data.description || null,
         parentId: page.parentId,
         sortOrder: page.sortOrder,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+
+  const updateProjectMutation = useMutation({
+    mutationFn: async (data: { name: string; description: string | null }) => {
+      if (!project) throw new Error('No project selected');
+      return client.api.projects({ id: project.id.toString() }).put({
+        name: data.name,
+        description: data.description || null,
       });
     },
     onSuccess: () => {
@@ -72,11 +100,18 @@ export function PropertyPanel({ page, isOpen, onClose, onDelete }: PropertyPanel
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await updatePageMutation.mutateAsync({
-      name: formData.name,
-      slug: formData.slug,
-      description: formData.description || null,
-    });
+    if (isEditingProject) {
+      await updateProjectMutation.mutateAsync({
+        name: formData.name,
+        description: formData.description || null,
+      });
+    } else if (page) {
+      await updatePageMutation.mutateAsync({
+        name: formData.name,
+        slug: formData.slug,
+        description: formData.description || null,
+      });
+    }
   };
 
   const handleDelete = async () => {
@@ -85,13 +120,15 @@ export function PropertyPanel({ page, isOpen, onClose, onDelete }: PropertyPanel
     }
   };
 
-  if (!isOpen || !page) return null;
+  if (!isOpen || (!page && !project)) return null;
 
   return (
-    <div className="absolute left-[69px] top-[4px] h-auto min-w-[320px] max-w-[420px] w-auto bg-background border shadow-lg flex flex-col rounded-lg z-50">
+    <div className={`absolute left-[72px] top-4 h-auto min-w-[320px] max-w-[420px] w-auto bg-background border shadow-xl flex flex-col rounded-lg z-50 transition-opacity duration-200 ${
+      isDragging ? 'opacity-0 pointer-events-none' : 'opacity-100'
+    }`}>
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3 border-b shrink-0">
-        <h2 className="text-base font-semibold">Page</h2>
+        <h2 className="text-base font-semibold">{isEditingProject ? 'Project' : 'Page'}</h2>
         <Button 
           variant="ghost" 
           size="icon" 
@@ -116,30 +153,32 @@ export function PropertyPanel({ page, isOpen, onClose, onDelete }: PropertyPanel
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Page name"
+                placeholder={isEditingProject ? "Project name" : "Page name"}
                 className="pl-8"
                 required
               />
             </div>
           </div>
 
-          {/* Slug Field */}
-          <div className="space-y-1.5">
-            <label htmlFor="slug" className="text-sm font-medium text-foreground">
-              Slug *
-            </label>
-            <div className="relative">
-              <Link2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                id="slug"
-                value={formData.slug}
-                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                placeholder="page-slug"
-                className="pl-8"
-                required
-              />
+          {/* Slug Field - Only for pages */}
+          {!isEditingProject && (
+            <div className="space-y-1.5">
+              <label htmlFor="slug" className="text-sm font-medium text-foreground">
+                Slug *
+              </label>
+              <div className="relative">
+                <Link2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="slug"
+                  value={formData.slug}
+                  onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                  placeholder="page-slug"
+                  className="pl-8"
+                  required
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Description Field */}
           <div className="space-y-1.5">
@@ -161,23 +200,25 @@ export function PropertyPanel({ page, isOpen, onClose, onDelete }: PropertyPanel
         <div className="border-t px-5 py-4 space-y-2 mt-auto">
           <Button 
             type="submit" 
-            disabled={updatePageMutation.isPending}
+            disabled={isEditingProject ? updateProjectMutation.isPending : updatePageMutation.isPending}
             className="w-full"
             size="default"
           >
-            {updatePageMutation.isPending ? 'Saving...' : 'Save Changes'}
+            {(isEditingProject ? updateProjectMutation.isPending : updatePageMutation.isPending) ? 'Saving...' : 'Save Changes'}
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleDelete}
-            disabled={deletePageMutation.isPending}
-            className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
-            size="default"
-          >
-            <Trash2 className="w-4 h-4" />
-            {deletePageMutation.isPending ? 'Deleting...' : 'Delete Page'}
-          </Button>
+          {!isEditingProject && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleDelete}
+              disabled={deletePageMutation.isPending}
+              className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+              size="default"
+            >
+              <Trash2 className="w-4 h-4" />
+              {deletePageMutation.isPending ? 'Deleting...' : 'Delete Page'}
+            </Button>
+          )}
         </div>
       </form>
     </div>

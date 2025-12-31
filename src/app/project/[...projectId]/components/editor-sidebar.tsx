@@ -1,45 +1,41 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { Edit, Plus, HelpCircle, Undo2, Redo2 } from "lucide-react";
+import { Edit, Plus } from "lucide-react";
 
 interface EditorSidebarProps {
   onUndo?: () => void;
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
+  isPropertyPanelOpen?: boolean;
+  onTogglePropertyPanel?: () => void;
 }
 
-export function EditorSidebar({ onUndo, onRedo, canUndo, canRedo }: EditorSidebarProps) {
+export function EditorSidebar({ onUndo, onRedo, canUndo, canRedo, isPropertyPanelOpen, onTogglePropertyPanel }: EditorSidebarProps) {
   return (
-    <aside className="w-16 border-r bg-background flex flex-col items-center py-4 gap-4">
-      <Button variant="ghost" size="icon" title="Edit">
+    <aside className="absolute left-4 top-[calc(56px+16px)] z-40 flex flex-col gap-2">
+      {/* Floating Edit button */}
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        title="Toggle edit panel"
+        onClick={onTogglePropertyPanel}
+        className={`h-10 w-10 bg-background border shadow-sm hover:bg-accent transition-colors ${
+          isPropertyPanelOpen ? 'bg-accent' : ''
+        }`}
+      >
         <Edit className="w-5 h-5" />
       </Button>
-      <Button variant="ghost" size="icon" title="Add">
+      
+      {/* Floating Add button */}
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        title="Add"
+        className="h-10 w-10 bg-background border shadow-sm hover:bg-accent"
+      >
         <Plus className="w-5 h-5" />
-      </Button>
-      <div className="flex-1" />
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        title="Undo (Ctrl+Z)"
-        onClick={onUndo}
-        disabled={!canUndo}
-      >
-        <Undo2 className="w-5 h-5" />
-      </Button>
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        title="Redo (Ctrl+Y)"
-        onClick={onRedo}
-        disabled={!canRedo}
-      >
-        <Redo2 className="w-5 h-5" />
-      </Button>
-      <Button variant="ghost" size="icon" title="Help">
-        <HelpCircle className="w-5 h-5" />
       </Button>
     </aside>
   );

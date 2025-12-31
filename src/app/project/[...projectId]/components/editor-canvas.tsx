@@ -41,11 +41,12 @@ interface EditorCanvasProps {
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
+  onDragStateChange?: (isDragging: boolean) => void;
 }
 
-export function EditorCanvas({ project, sitemap, zoom, onZoomChange, onSaveStatusChange, onPageSelect, selectedPageId, onUndo, onRedo, canUndo, canRedo }: EditorCanvasProps) {
+export function EditorCanvas({ project, sitemap, zoom, onZoomChange, onSaveStatusChange, onPageSelect, selectedPageId, onUndo, onRedo, canUndo, canRedo, onDragStateChange }: EditorCanvasProps) {
   return (
-    <div className="flex-1 overflow-hidden bg-muted/30 relative">
+    <div className="flex-1 overflow-hidden bg-[#f5f5f0] relative">
       <SitemapDiagramProvider
         initialPages={sitemap.pages}
         sitemapId={sitemap.id}
@@ -64,6 +65,7 @@ export function EditorCanvas({ project, sitemap, zoom, onZoomChange, onSaveStatu
           onRedo={onRedo}
           canUndo={canUndo}
           canRedo={canRedo}
+          onDragStateChange={onDragStateChange}
         />
       </SitemapDiagramProvider>
     </div>

@@ -85,6 +85,7 @@ function EditorContent({ projectId }: { projectId: string }) {
   const [isPropertyPanelOpen, setIsPropertyPanelOpen] = React.useState(false);
   const [canUndo, setCanUndo] = React.useState(false);
   const [canRedo, setCanRedo] = React.useState(false);
+  const [isDragging, setIsDragging] = React.useState(false);
   
   // Handle loading state
   if (query.isLoading) {
@@ -143,6 +144,11 @@ function EditorContent({ projectId }: { projectId: string }) {
     setIsPropertyPanelOpen(false);
   };
 
+  const handleTogglePropertyPanel = () => {
+    // Always toggle - if no page selected, will edit project
+    setIsPropertyPanelOpen(prev => !prev);
+  };
+
   return (
     <>
       <EditorHeader project={project} />
@@ -158,6 +164,8 @@ function EditorContent({ projectId }: { projectId: string }) {
           }}
           canUndo={canUndo}
           canRedo={canRedo}
+          isPropertyPanelOpen={isPropertyPanelOpen}
+          onTogglePropertyPanel={handleTogglePropertyPanel}
         />
         <EditorCanvas 
           project={project} 
@@ -171,10 +179,13 @@ function EditorContent({ projectId }: { projectId: string }) {
           onRedo={() => setCanRedo(false)}
           canUndo={canUndo}
           canRedo={canRedo}
+          onDragStateChange={setIsDragging}
         />
         <PropertyPanel
           page={selectedPage}
+          project={project}
           isOpen={isPropertyPanelOpen}
+          isDragging={isDragging}
           onClose={() => {
             setIsPropertyPanelOpen(false);
             setSelectedPage(null);

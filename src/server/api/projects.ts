@@ -2,6 +2,7 @@ import { Elysia, status, t } from 'elysia'
 import { db, schema } from '@/db';
 import { generateSitemapWorkflow } from '../workflows/generate-sitemap';
 import { requireAuthenticated } from './helpers/auth';
+import { eq } from 'drizzle-orm';
 
 export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Projects"] })
   .use(requireAuthenticated)
@@ -113,6 +114,51 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
   })
 
   // Edit a project
-  .put("/:id", async () => {
+  .put("/:id", async ({ user, params, body }) => {
+    const project = await db.query.projects.findFirst({
+      where: (projects, { eq }) => eq(projects.id, Number(params.id)),
+      with: {
+        team: true,
+      }
+    })
 
+    if (!project) return status(404, { error: 'Project not found' })
+
+    const teamIds = user.teams.map(team => team.id)
+    if (!teamIds.includes(project.team.id)) {
+      return status(403, { error: 'Forbidden' })
+    }
+
+    const updated = await db.update(schema.projects)
+      .set({
+        name: body.name,
+        description: body.description ?? null,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.projects.id, Number(params.id)))
+      .returning()
+      .then(res => res[0])
+
+    if (!updated) throw new Error('Project not updated')
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      description: updated.description,
+    }
+  }, {
+    body: t.Object({
+      name: t.String(),
+      description: t.Nullable(t.String()),
+    }),
+    response: {
+      400: t.Object({ error: t.String() }),
+      404: t.Object({ error: t.String() }),
+      403: t.Object({ error: t.String() }),
+      200: t.Object({
+        id: t.Number(),
+        name: t.String(),
+        description: t.Nullable(t.String()),
+      })
+    }
   })

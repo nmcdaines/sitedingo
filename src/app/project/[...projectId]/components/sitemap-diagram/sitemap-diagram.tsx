@@ -25,6 +25,7 @@ interface SitemapDiagramProps {
   onRedo?: () => void;
   canUndo?: boolean;
   canRedo?: boolean;
+  onDragStateChange?: (isDragging: boolean) => void;
 }
 
 export function SitemapDiagram({
@@ -39,6 +40,7 @@ export function SitemapDiagram({
   onRedo,
   canUndo,
   canRedo,
+  onDragStateChange,
 }: SitemapDiagramProps) {
   // Use context for state and mutations
   const {
@@ -68,6 +70,7 @@ export function SitemapDiagram({
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [mouseDownOnEmptySpace, setMouseDownOnEmptySpace] = useState(false);
   const [mouseDownPos, setMouseDownPos] = useState({ x: 0, y: 0 });
+  const mouseDownWasOnEmptySpaceRef = React.useRef(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const contentRef = React.useRef<HTMLDivElement>(null);
   const transformRef = React.useRef<HTMLDivElement>(null);
@@ -441,6 +444,7 @@ export function SitemapDiagram({
       !e.metaKey
     ) {
       setMouseDownOnEmptySpace(false);
+      mouseDownWasOnEmptySpaceRef.current = false;
       return; // Don't prevent default or stop propagation - let dnd-kit handle it
     }
 
@@ -459,11 +463,13 @@ export function SitemapDiagram({
       e.preventDefault();
       e.stopPropagation();
       setMouseDownOnEmptySpace(true);
+      mouseDownWasOnEmptySpaceRef.current = true;
       setMouseDownPos({ x: e.clientX, y: e.clientY });
       setIsPanning(true);
       setPanStart({ x: e.clientX, y: e.clientY });
     } else {
       setMouseDownOnEmptySpace(false);
+      mouseDownWasOnEmptySpaceRef.current = false;
     }
   };
 
@@ -494,7 +500,23 @@ export function SitemapDiagram({
   // Handle pan end
   const handleMouseUp = () => {
     setIsPanning(false);
+    // Don't reset mouseDownWasOnEmptySpaceRef here - we need it for the click handler
     setMouseDownOnEmptySpace(false);
+  };
+
+  // Handle click on empty space - prevent selection changes
+  const handleClick = (e: React.MouseEvent) => {
+    // If the mouse down was on empty space, prevent any selection changes
+    if (mouseDownWasOnEmptySpaceRef.current) {
+      e.stopPropagation();
+      e.preventDefault();
+      // Reset the ref after handling
+      mouseDownWasOnEmptySpaceRef.current = false;
+      // Don't call onPageSelect - keep current selection unchanged
+      return;
+    }
+
+    // Otherwise, let the click propagate normally (for node clicks, etc.)
   };
 
   // Handle drag start (for both pages and sections)
@@ -509,9 +531,13 @@ export function SitemapDiagram({
       setActiveId(id); // Also set main activeId for UI updates
     }
     
+    // Notify parent that dragging has started
+    onDragStateChange?.(true);
+    
     // Stop any panning when drag starts
     setIsPanning(false);
     setMouseDownOnEmptySpace(false);
+    mouseDownWasOnEmptySpaceRef.current = false;
   };
 
   // Handle drag end (for both pages and sections)
@@ -523,6 +549,9 @@ export function SitemapDiagram({
     } else if (activeData?.type === "section") {
       await moveSection(event);
     }
+    
+    // Notify parent that dragging has ended
+    onDragStateChange?.(false);
   };
 
   // Handle drag over (for both pages and sections)
@@ -544,6 +573,7 @@ export function SitemapDiagram({
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onClick={handleClick}
         style={{
           cursor: isPanning
             ? "grabbing"

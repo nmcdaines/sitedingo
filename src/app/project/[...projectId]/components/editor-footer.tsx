@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { HelpCircle, ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+import { HelpCircle, ZoomIn, ZoomOut, Maximize2, ChevronDown } from "lucide-react";
 
 interface EditorFooterProps {
   zoom?: number;
@@ -53,20 +53,12 @@ export function EditorFooter({ zoom = 0.7, onZoomIn, onZoomOut, onZoomFit, saveS
           </span>
         )}
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Project</span>
+          <span className="text-sm text-muted-foreground">Sitemap 2</span>
           <span className="text-sm text-muted-foreground">=</span>
-          <span className="text-sm font-medium min-w-[3rem] text-center">{zoomPercent}%</span>
-        </div>
-        <div className="flex items-center gap-1 ml-4">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onZoomOut} title="Zoom Out">
-            <ZoomOut className="w-4 h-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onZoomIn} title="Zoom In">
-            <ZoomIn className="w-4 h-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onZoomFit} title="Fit to Screen">
-            <Maximize2 className="w-4 h-4" />
-          </Button>
+          <button className="text-sm font-medium flex items-center gap-1 hover:text-foreground transition-colors">
+            {zoomPercent}%
+            <ChevronDown className="w-3 h-3" />
+          </button>
         </div>
       </div>
     </footer>

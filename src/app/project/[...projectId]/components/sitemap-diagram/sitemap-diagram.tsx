@@ -653,23 +653,16 @@ export function SitemapDiagram({
                           onPageSelect?.(page);
                         }}
                         onPageDelete={async (page) => {
-                          if (
-                            page &&
-                            confirm(
-                              "Are you sure you want to delete this page?",
-                            )
-                          ) {
-                            await deletePage(page.id);
-                            if (selectedNodeId === page.id) {
-                              setSelectedNodeId(null);
-                              onPageSelect?.(null);
-                            }
+                          if(!page) return;
+                          await deletePage(page.id);
+                          if (selectedNodeId === page.id) {
+                            setSelectedNodeId(null);
+                            onPageSelect?.(null);
                           }
                         }}
                         onPageDuplicate={async (page) => {
-                          if (page) {
-                            await duplicatePage(page);
-                          }
+                          if (!page) return;
+                          await duplicatePage(page);
                         }}
                       />
                     </div>,

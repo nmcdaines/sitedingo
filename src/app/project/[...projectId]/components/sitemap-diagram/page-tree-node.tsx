@@ -211,14 +211,14 @@ export function PageTreeNode({
                       id={`reorder-${node.id}-${index}`}
                       parentId={node.id}
                       position={index}
-                      width={4}
+                      width={12}
                       height={60}
                       isVisible={true}
-                      className='absolute bg-yellow-600/50 left-0 top-0 h-full w-[12px] -translate-x-full'
+                      className='absolute bg-pink-600/50 left-0 right-[calc(50%+140px)] top-0 h-full w-auto'
                     />
                   )}
 
-                  {canHaveChildren && activeId && index === sortedChildren.length - 1 && (
+                  {canHaveChildren && activeId && (
                     <EmptySpaceDropZone
                       id={`reorder-${node.id}-${index + 1}`}
                       parentId={node.id}
@@ -226,30 +226,11 @@ export function PageTreeNode({
                       width={12}
                       height={60}
                       isVisible={true}
-                      className='absolute bg-green-600/50 right-0 top-0 h-full w-[12px] translate-x-full'
+                      className='z-0 absolute bg-blue-600/50 right-0 top-0 h-full left-[calc(50%+140px)] w-auto'
                     />
                   )}
                 </PageTreeNode>
               </div>,
-              // // Add page button between children (not after last)
-              // index < sortedChildren.length - 1 && (
-              //   <div 
-              //     key={`add-page-${child.id}`} 
-              //     className="flex flex-col items-center relative" 
-              //     style={{ flexShrink: 0, flexGrow: 0, width: 'max-content', height: '100%' }}
-              //   >
-              //     <div className="absolute top-0 left-0 right-0 w-full">
-              //       <HorizontalLine />
-              //     </div>
-
-              //     <AddPageButton
-              //       onClick={() => handleAddPage(node.id, index + 1)}
-              //       parentId={node.id}
-              //       position={index + 1}
-              //       className="mt-11"
-              //     />
-              //   </div>
-              // ),
             ]).filter(Boolean)}
           </div>
         </div>

@@ -4,8 +4,6 @@ import React from 'react';
 import { TreeNode } from '../../lib/tree-utils';
 import { PageNode } from './page-node';
 import { EmptySpaceDropZone } from './empty-space-drop-zone';
-import { AddPageButton, HorizontalLine } from './add-page-button';
-import { client } from '@/lib/client';
 
 interface PageTreeNodeProps {
   node: TreeNode;
@@ -33,6 +31,7 @@ interface PageTreeNodeProps {
   onPageDuplicate?: (page: any) => void;
   sitemapId?: number;
   children?: React.ReactNode;
+  onPagesChange?: (updater: (pages: PageTreeNodeProps['localPages']) => PageTreeNodeProps['localPages']) => void;
 }
 
 // Vertical line component (SVG)
@@ -69,7 +68,8 @@ function HorizontalArrow({ isFirst, isLast }: { isFirst: boolean; isLast: boolea
   };
 
   return (
-    <svg width="100%" height="40px" className="block">
+    <div className='w-full h-[40px]'>
+    <svg width="100%" height="40px" className="absolute block">
       <defs>
         <marker
           id="arrowhead"
@@ -103,6 +103,7 @@ function HorizontalArrow({ isFirst, isLast }: { isFirst: boolean; isLast: boolea
         style={lineStyle}
       />
     </svg>
+    </div>
   );
 }
 
@@ -116,6 +117,7 @@ export function PageTreeNode({
   onPageEdit,
   onPageDelete,
   onPageDuplicate,
+  onPagesChange,
   sitemapId,
   children,
 }: PageTreeNodeProps) {
@@ -124,51 +126,6 @@ export function PageTreeNode({
   const nodePage = localPages.find(p => p.id === node.id);
   const canHaveChildren = true; // Allow all pages to have children
 
-  // Handle adding a new child page
-  const handleAddPage = async (parentId: number | null, position: number) => {
-    if (!sitemapId) return;
-    
-    try {
-      // Get siblings sorted by sortOrder
-      const siblings = localPages
-        .filter(p => p.parentId === parentId)
-        .sort((a, b) => a.sortOrder - b.sortOrder);
-      
-      // Clamp position to valid range
-      const validPosition = Math.max(0, Math.min(position, siblings.length));
-      
-      // Find siblings that need to be shifted (those with sortOrder >= validPosition)
-      const siblingsToShift = siblings.filter(s => s.sortOrder >= validPosition);
-      
-      // Create the new page with sortOrder = validPosition
-      const newPage = await client.api.pages.post({
-        sitemapId: sitemapId,
-        parentId: parentId,
-        name: 'New Page',
-        slug: `new-page-${Date.now()}`,
-        description: null,
-        sortOrder: validPosition,
-      });
-      
-      // Shift all affected siblings by incrementing their sortOrder
-      await Promise.all(
-        siblingsToShift.map(sibling =>
-          client.api.pages({ id: sibling.id.toString() }).put({
-            name: sibling.name,
-            slug: sibling.slug,
-            description: sibling.description,
-            parentId: sibling.parentId,
-            sortOrder: sibling.sortOrder + 1,
-          })
-        )
-      );
-      
-      // Refresh pages - this should come from parent
-      window.location.reload();
-    } catch (error) {
-      console.error('Failed to create page:', error);
-    }
-  };
 
   // Base case: render a single page node
   if (sortedChildren.length === 0) {
@@ -180,6 +137,9 @@ export function PageTreeNode({
           isDragging={activeId === `page-${node.id}`}
           showSections={showSections}
           activeId={activeId}
+          onPagesChange={onPagesChange}
+          localPages={localPages}
+          sitemapId={sitemapId}
           onClick={() => onPageSelect?.(pageData || null)}
           onEdit={() => onPageEdit?.(pageData || null)}
           onDelete={async () => {
@@ -207,6 +167,9 @@ export function PageTreeNode({
         node={node}
         isSelected={selectedNodeId === node.id}
         isDragging={activeId === `page-${node.id}`}
+        localPages={localPages}
+        sitemapId={sitemapId}
+        onPagesChange={onPagesChange}
         showSections={showSections}
         activeId={activeId}
         onClick={() => onPageSelect?.(pageData || null)}
@@ -277,6 +240,7 @@ export function PageTreeNode({
                   onPageDelete={onPageDelete}
                   onPageDuplicate={onPageDuplicate}
                   sitemapId={sitemapId}
+                  onPagesChange={onPagesChange}
                 >
                   {canHaveChildren && activeId && (
                     <EmptySpaceDropZone
@@ -303,25 +267,25 @@ export function PageTreeNode({
                   )}
                 </PageTreeNode>
               </div>,
-              // Add page button between children (not after last)
-              index < sortedChildren.length - 1 && (
-                <div 
-                  key={`add-page-${child.id}`} 
-                  className="flex flex-col items-center relative" 
-                  style={{ flexShrink: 0, flexGrow: 0, width: 'max-content', height: '100%' }}
-                >
-                  <div className="absolute top-0 left-0 right-0 w-full">
-                    <HorizontalLine />
-                  </div>
+              // // Add page button between children (not after last)
+              // index < sortedChildren.length - 1 && (
+              //   <div 
+              //     key={`add-page-${child.id}`} 
+              //     className="flex flex-col items-center relative" 
+              //     style={{ flexShrink: 0, flexGrow: 0, width: 'max-content', height: '100%' }}
+              //   >
+              //     <div className="absolute top-0 left-0 right-0 w-full">
+              //       <HorizontalLine />
+              //     </div>
 
-                  <AddPageButton
-                    onClick={() => handleAddPage(node.id, index + 1)}
-                    parentId={node.id}
-                    position={index + 1}
-                    className="mt-11"
-                  />
-                </div>
-              ),
+              //     <AddPageButton
+              //       onClick={() => handleAddPage(node.id, index + 1)}
+              //       parentId={node.id}
+              //       position={index + 1}
+              //       className="mt-11"
+              //     />
+              //   </div>
+              // ),
             ]).filter(Boolean)}
           </div>
         </div>

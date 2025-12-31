@@ -146,7 +146,7 @@ function EditorContent({ projectId }: { projectId: string }) {
   return (
     <>
       <EditorHeader project={project} />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         <EditorSidebar 
           onUndo={() => {
             // Undo is handled in SitemapDiagram via keyboard shortcuts

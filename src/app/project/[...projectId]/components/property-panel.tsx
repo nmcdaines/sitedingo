@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { X } from "lucide-react";
+import { X, FileText, Link2, Trash2 } from "lucide-react";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { client } from '@/lib/client';
 
@@ -88,63 +88,95 @@ export function PropertyPanel({ page, isOpen, onClose, onDelete }: PropertyPanel
   if (!isOpen || !page) return null;
 
   return (
-    <div className="fixed right-0 top-0 h-full w-96 bg-background border-l shadow-lg z-50 flex flex-col animate-in slide-in-from-right duration-300">
-      <div className="flex items-center justify-between p-4 border-b">
-        <h2 className="text-lg font-semibold">Edit Page</h2>
-        <Button variant="ghost" size="icon" onClick={onClose}>
+    <div className="absolute left-[69px] top-[4px] h-auto min-w-[320px] max-w-[420px] w-auto bg-background border shadow-lg flex flex-col rounded-lg z-50">
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-3 border-b shrink-0">
+        <h2 className="text-base font-semibold">Page</h2>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={onClose}
+          className="h-7 w-7"
+        >
           <X className="w-4 h-4" />
         </Button>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 space-y-4">
-        <div className="space-y-2">
-          <label htmlFor="name" className="text-sm font-medium">
-            Name
-          </label>
-          <Input
-            id="name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="Page name"
-          />
+      {/* Form Content */}
+      <form onSubmit={handleSubmit} className="flex flex-col min-w-0">
+        <div className="px-5 py-5 space-y-5">
+          {/* Name Field */}
+          <div className="space-y-1.5">
+            <label htmlFor="name" className="text-sm font-medium text-foreground">
+              Name *
+            </label>
+            <div className="relative">
+              <FileText className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Page name"
+                className="pl-8"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Slug Field */}
+          <div className="space-y-1.5">
+            <label htmlFor="slug" className="text-sm font-medium text-foreground">
+              Slug *
+            </label>
+            <div className="relative">
+              <Link2 className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                id="slug"
+                value={formData.slug}
+                onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+                placeholder="page-slug"
+                className="pl-8"
+                required
+              />
+            </div>
+          </div>
+
+          {/* Description Field */}
+          <div className="space-y-1.5">
+            <label htmlFor="description" className="text-sm font-medium text-foreground">
+              Description
+            </label>
+            <Textarea
+              id="description"
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              placeholder="Brief description of this page..."
+              rows={4}
+              className="resize-none"
+            />
+          </div>
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="slug" className="text-sm font-medium">
-            Slug
-          </label>
-          <Input
-            id="slug"
-            value={formData.slug}
-            onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-            placeholder="page-slug"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="description" className="text-sm font-medium">
-            Description
-          </label>
-          <Textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            placeholder="Page description"
-            rows={4}
-          />
-        </div>
-
-        <div className="flex gap-2 pt-4">
-          <Button type="submit" disabled={updatePageMutation.isPending}>
+        {/* Footer Actions */}
+        <div className="border-t px-5 py-4 space-y-2 mt-auto">
+          <Button 
+            type="submit" 
+            disabled={updatePageMutation.isPending}
+            className="w-full"
+            size="default"
+          >
             {updatePageMutation.isPending ? 'Saving...' : 'Save Changes'}
           </Button>
           <Button
             type="button"
-            variant="destructive"
+            variant="outline"
             onClick={handleDelete}
             disabled={deletePageMutation.isPending}
+            className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+            size="default"
           >
-            {deletePageMutation.isPending ? 'Deleting...' : 'Delete'}
+            <Trash2 className="w-4 h-4" />
+            {deletePageMutation.isPending ? 'Deleting...' : 'Delete Page'}
           </Button>
         </div>
       </form>

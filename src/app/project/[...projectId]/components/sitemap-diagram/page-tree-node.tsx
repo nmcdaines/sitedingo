@@ -1,10 +1,13 @@
 'use client';
 
 import React from 'react';
+import { PlusIcon } from 'lucide-react';
 import { TreeNode } from '../../lib/tree-utils';
 import { PageNode } from './page-node';
 import { EmptySpaceDropZone } from './empty-space-drop-zone';
 import { useSitemapDiagram } from './sitemap-diagram-context';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface PageTreeNodeProps {
   node: TreeNode;
@@ -98,16 +101,25 @@ export function PageTreeNode({
   onPageDuplicate,
   children,
 }: PageTreeNodeProps) {
-  const { pages, activeId, showSections } = useSitemapDiagram();
+  const { pages, activeId, showSections, addPage } = useSitemapDiagram();
   const pageData = pages.find(p => p.id === node.id);
   const sortedChildren = [...node.children].sort((a, b) => a.sortOrder - b.sortOrder);
   const canHaveChildren = true; // Allow all pages to have children
 
+  // Handle adding a new child page
+  const handleAddChildPage = async () => {
+    if (!pageData) {
+      console.error('Missing page data for node:', node.id);
+      return;
+    }
+    
+    await addPage(node.id, 0);
+  };
 
   // Base case: render a single page node
   if (sortedChildren.length === 0) {
     return (
-      <div className="flex flex-col items-center relative">
+      <div className="flex flex-col items-center relative group pb-12">
         <PageNode
           node={node}
           isSelected={selectedNodeId === node.id}
@@ -126,6 +138,25 @@ export function PageTreeNode({
             }
           } : undefined}
         />
+
+        {/* Add child page button - appears on hover below leaf nodes */}
+        <div className={cn('mt-2 hidden z-10', !activeId && 'group-hover:block')}>
+          <Button 
+            variant="outline"
+            className='add-button'
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              handleAddChildPage();
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+            }}
+            style={{ zIndex: 9999 }}
+          >
+            <PlusIcon className="w-4 h-4" />
+          </Button>
+        </div>
 
         {children}
       </div>

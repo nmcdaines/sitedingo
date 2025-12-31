@@ -217,10 +217,12 @@ interface SitemapDiagramContextValue {
   
   // Mutations
   addPage: (parentId: number | null, position: number) => Promise<void>;
+  addSection: (pageId: number, position?: number) => Promise<void>;
   movePage: (event: DragEndEvent) => Promise<void>;
   moveSection: (event: DragEndEvent) => Promise<void>;
   deletePage: (pageId: number) => Promise<void>;
   duplicatePage: (page: Page) => Promise<void>;
+  updateSection: (sectionId: number, updates: { name?: string | null; componentType?: string; metadata?: any }) => Promise<void>;
   undo: () => void;
   redo: () => void;
   
@@ -876,6 +878,138 @@ export function SitemapDiagramProvider({
     }
   }, [sitemapId, queryClient]);
 
+  // Add section mutation
+  const addSection = useCallback(async (pageId: number, position?: number) => {
+    const page = dataState.pages.find((p) => p.id === pageId);
+    if (!page) {
+      console.error('Page not found:', pageId);
+      return;
+    }
+
+    const sections = [...page.sections].sort((a, b) => a.sortOrder - b.sortOrder);
+    const targetPosition = position !== undefined ? position : sections.length;
+
+    try {
+      const newSection = await client.api.sections.post({
+        pageId: pageId,
+        componentType: 'hero',
+        name: 'New Section',
+        metadata: {},
+        sortOrder: targetPosition,
+      });
+
+      const actualSection = (newSection as any).data || newSection;
+
+      // Update local state optimistically
+      const updatedPages = dataState.pages.map((p) => {
+        if (p.id === pageId) {
+          const updatedSections = [...sections];
+          updatedSections.splice(targetPosition, 0, {
+            id: actualSection.id,
+            componentType: actualSection.componentType,
+            name: actualSection.name,
+            metadata: actualSection.metadata,
+            sortOrder: targetPosition,
+          });
+          // Reorder all sections to have correct sortOrder
+          const reorderedSections = updatedSections.map((s, idx) => ({
+            ...s,
+            sortOrder: idx,
+          }));
+
+          return {
+            ...p,
+            sections: reorderedSections,
+          };
+        }
+        return p;
+      });
+
+      dataDispatch({ type: 'SET_PAGES', payload: updatedPages });
+
+      // Update sort orders for sections that were shifted
+      const sectionsToUpdate = sections.slice(targetPosition);
+      if (sectionsToUpdate.length > 0) {
+        await Promise.all(
+          sectionsToUpdate.map((section, idx) =>
+            client.api.sections({ id: section.id.toString() }).put({
+              componentType: section.componentType,
+              name: section.name,
+              metadata: section.metadata,
+              sortOrder: targetPosition + 1 + idx,
+              pageId: pageId,
+            }),
+          ),
+        );
+      }
+
+      previousPagesRef.current = updatedPages;
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    } catch (error) {
+      console.error('Failed to create section:', error);
+      alert('Failed to create section. Please try again.');
+    }
+  }, [dataState.pages, queryClient]);
+
+  // Update section mutation
+  const updateSection = useCallback(async (
+    sectionId: number,
+    updates: { name?: string | null; componentType?: string; metadata?: any }
+  ) => {
+    try {
+      const page = dataState.pages.find((p) =>
+        p.sections.some((s) => s.id === sectionId),
+      );
+      if (!page) {
+        console.error('Page not found for section:', sectionId);
+        return;
+      }
+
+      const section = page.sections.find((s) => s.id === sectionId);
+      if (!section) {
+        console.error('Section not found:', sectionId);
+        return;
+      }
+
+      const updatedSection = await client.api.sections({ id: sectionId.toString() }).put({
+        componentType: updates.componentType ?? section.componentType,
+        name: updates.name ?? section.name,
+        metadata: updates.metadata ?? section.metadata,
+        sortOrder: section.sortOrder,
+        pageId: page.id,
+      });
+
+      const actualSection = (updatedSection as any).data || updatedSection;
+
+      // Update local state
+      const updatedPages = dataState.pages.map((p) => {
+        if (p.id === page.id) {
+          return {
+            ...p,
+            sections: p.sections.map((s) =>
+              s.id === sectionId
+                ? {
+                    ...s,
+                    name: actualSection.name,
+                    componentType: actualSection.componentType,
+                    metadata: actualSection.metadata,
+                  }
+                : s,
+            ),
+          };
+        }
+        return p;
+      });
+
+      dataDispatch({ type: 'SET_PAGES', payload: updatedPages });
+      previousPagesRef.current = updatedPages;
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    } catch (error) {
+      console.error('Failed to update section:', error);
+      alert('Failed to update section. Please try again.');
+    }
+  }, [dataState.pages, queryClient]);
+
   // Undo/Redo
   const undo = useCallback(() => {
     dataDispatch({ type: 'UNDO' });
@@ -901,10 +1035,12 @@ export function SitemapDiagramProvider({
     setShowSections: (show) => visualDispatch({ type: 'SET_SHOW_SECTIONS', payload: show }),
     setSaveStatus,
     addPage,
+    addSection,
     movePage,
     moveSection,
     deletePage,
     duplicatePage,
+    updateSection,
     undo,
     redo,
     updatePages,

@@ -34,7 +34,7 @@ const pageIcons: Record<string, typeof Home> = {
 
 export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDelete, onDuplicate, showSections = true, children, dropZone }: PageNodeProps) {
   const contextMenuRef = React.useRef<HTMLDivElement>(null);
-  const { pages, activeId, showSections: contextShowSections, addPage } = useSitemapDiagram();
+  const { pages, activeId, activeSectionId, showSections: contextShowSections, addPage, addSection } = useSitemapDiagram();
   
   // Get the actual page data from pages to ensure we have correct parentId and sortOrder
   const pageData = pages.find(p => p.id === node.id);
@@ -253,6 +253,7 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
                           section={section}
                           pageId={node.id}
                           isDragging={activeId === `section-${section.id}`}
+                          isSelected={activeSectionId === `section-${section.id}`}
                         />
                         {/* Drop zone after each section - always show when dragging sections */}
                         <SectionDropZone
@@ -263,6 +264,18 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
                         />
                       </React.Fragment>
                     ))}
+                  {/* Add section button when sections exist */}
+                  <Button 
+                    className='w-full mt-2' 
+                    variant="outline"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      addSection(node.id, node.sections.length);
+                    }}
+                  >
+                    <PlusIcon className="w-4 h-4" /> Add Section
+                  </Button>
                 </>
               ) : (
                 <>
@@ -274,7 +287,16 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
                     isVisible={activeId?.startsWith('section-') || false}
                   />
                   <div className="flex flex-col items-center gap-2">
-                    <Button className='w-full' variant="outline"><PlusIcon /> Section</Button>
+                    <Button 
+                      className='w-full' 
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addSection(node.id, 0);
+                      }}
+                    >
+                      <PlusIcon /> Section
+                    </Button>
                     <Button className='w-full' variant="outline"><StarsIcon /> Generate Content</Button>
                   </div>
                 </>

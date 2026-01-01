@@ -174,6 +174,7 @@ async function populateSitemap(projectId: number, projectDescription: string, pa
       name: pageInfo.name,
       description: '',
       slug: slug,
+      icon: null,
       sortOrder: pageIndex,
     }).returning().then(res => res[0]);
 

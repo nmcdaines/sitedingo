@@ -42,6 +42,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
         name: t.String(),
         slug: t.String(),
         description: t.Nullable(t.String()),
+        icon: t.Nullable(t.String()),
         sortOrder: t.Number(),
         parentId: t.Nullable(t.Number()),
         sections: t.Array(t.Object({
@@ -98,6 +99,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
       name: body.name,
       slug: body.slug,
       description: body.description || null,
+      icon: body.icon || null,
       sortOrder: body.sortOrder || 0,
     }).returning().then(res => res[0])
 
@@ -111,6 +113,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
       name: t.String(),
       slug: t.String(),
       description: t.Nullable(t.String()),
+      icon: t.Nullable(t.String()),
       sortOrder: t.Number(),
     }),
     response: {
@@ -122,6 +125,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
         name: t.String(),
         slug: t.String(),
         description: t.Nullable(t.String()),
+        icon: t.Nullable(t.String()),
         sortOrder: t.Number(),
         parentId: t.Nullable(t.Number()),
         sitemapId: t.Number(),
@@ -163,6 +167,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
         name: body.name,
         slug: body.slug,
         description: body.description ?? null,
+        icon: body.icon ?? null,
         parentId: body.parentId ?? null,
         sortOrder: body.sortOrder,
         updatedAt: new Date(),
@@ -179,6 +184,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
       name: t.String(),
       slug: t.String(),
       description: t.Nullable(t.String()),
+      icon: t.Nullable(t.String()),
       parentId: t.Nullable(t.Number()),
       sortOrder: t.Number(),
     }),
@@ -191,6 +197,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
         name: t.String(),
         slug: t.String(),
         description: t.Nullable(t.String()),
+        icon: t.Nullable(t.String()),
         sortOrder: t.Number(),
         parentId: t.Nullable(t.Number()),
         sitemapId: t.Number(),

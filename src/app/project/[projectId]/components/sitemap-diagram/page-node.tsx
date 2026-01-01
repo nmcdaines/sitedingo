@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useDraggable, useDroppable, DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core';
-import { Home, Info, Folder, Phone, FileText, PlusIcon, StarsIcon } from "lucide-react";
+import { Home, Info, Folder, Phone, FileText, PlusIcon, StarsIcon, ShoppingCart, Users, Settings, Mail, Calendar, Image, Music, Video, Book, Map, Heart, Star, Search, Bell, Camera, Gift, Coffee, Gamepad2, Laptop, Smartphone, Globe, Lock, Unlock, Eye, Download, Upload, Share } from "lucide-react";
 import { TreeNode } from "../../lib/tree-utils";
 import { ContextMenu } from "../context-menu";
 import { cn } from '@/lib/utils';
@@ -27,6 +27,37 @@ interface PageNodeProps {
 
 const pageIcons: Record<string, typeof Home> = {
   home: Home,
+  info: Info,
+  folder: Folder,
+  phone: Phone,
+  'shopping-cart': ShoppingCart,
+  users: Users,
+  settings: Settings,
+  mail: Mail,
+  calendar: Calendar,
+  image: Image,
+  music: Music,
+  video: Video,
+  book: Book,
+  map: Map,
+  heart: Heart,
+  star: Star,
+  search: Search,
+  bell: Bell,
+  camera: Camera,
+  gift: Gift,
+  coffee: Coffee,
+  'gamepad-2': Gamepad2,
+  laptop: Laptop,
+  smartphone: Smartphone,
+  globe: Globe,
+  lock: Lock,
+  unlock: Unlock,
+  eye: Eye,
+  download: Download,
+  upload: Upload,
+  share: Share,
+  // Legacy mappings for backward compatibility
   about: Info,
   portfolio: Folder,
   contact: Phone,
@@ -159,10 +190,13 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
     return { ...listeners, ...wrappedListeners };
   }, [listeners]);
 
-  const iconName = node.slug.toLowerCase().includes('home') ? 'home' :
-    node.slug.toLowerCase().includes('about') ? 'about' :
-      node.slug.toLowerCase().includes('portfolio') ? 'portfolio' :
-        node.slug.toLowerCase().includes('contact') ? 'contact' : 'default';
+  // Use stored icon if available, otherwise fall back to slug-based logic
+  const iconName = node.icon || (
+    node.slug.toLowerCase().includes('home') ? 'home' :
+    node.slug.toLowerCase().includes('about') ? 'info' :
+      node.slug.toLowerCase().includes('portfolio') ? 'folder' :
+        node.slug.toLowerCase().includes('contact') ? 'phone' : 'default'
+  );
   const Icon = pageIcons[iconName] || pageIcons.default;
 
   const style = transform ? {

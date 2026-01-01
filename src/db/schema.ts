@@ -57,6 +57,7 @@ export const pages = pgTable("pages", (t) => ({
   name: t.varchar({ length: 255 }).notNull(),
   slug: t.varchar({ length: 255 }).notNull(),
   description: t.text(),
+  icon: t.varchar({ length: 50 }), // Icon name (e.g., "home", "info", "folder")
   sortOrder: t.integer().notNull().default(0),
   createdAt: t.timestamp().notNull().defaultNow(),
   updatedAt: t.timestamp().notNull().defaultNow(),

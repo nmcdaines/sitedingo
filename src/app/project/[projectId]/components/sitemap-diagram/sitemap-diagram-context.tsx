@@ -11,6 +11,7 @@ export interface Page {
   name: string;
   slug: string;
   description: string | null;
+  icon: string | null;
   sortOrder: number;
   parentId: number | null;
   sections: Array<{
@@ -77,7 +78,7 @@ interface DataState {
 type DataAction =
   | { type: 'SET_PAGES'; payload: Page[] }
   | { type: 'UPDATE_PAGES'; payload: (pages: Page[]) => Page[] }
-  | { type: 'UPDATE_PAGE'; payload: { id: number; updates: Partial<Pick<Page, 'name' | 'slug' | 'description'>> } }
+  | { type: 'UPDATE_PAGE'; payload: { id: number; updates: Partial<Pick<Page, 'name' | 'slug' | 'description' | 'icon'>> } }
   | { type: 'ADD_PAGE_OPTIMISTIC'; payload: { page: Page; siblingsToShift: number[] } }
   | { type: 'REPLACE_TEMP_PAGE'; payload: { tempId: number; actualPage: Page } }
   | { type: 'ROLLBACK_ADD_PAGE'; payload: { tempId: number; siblingsToShift: number[] } }
@@ -348,7 +349,7 @@ export function SitemapDiagramProvider({
   }, []);
 
   // Update single page helper (for optimistic updates)
-  const updatePage = useCallback((pageId: number, updates: { name?: string; slug?: string; description?: string | null }) => {
+  const updatePage = useCallback((pageId: number, updates: { name?: string; slug?: string; description?: string | null; icon?: string | null }) => {
     dataDispatch({ type: 'UPDATE_PAGE', payload: { id: pageId, updates } });
   }, []);
 
@@ -366,6 +367,7 @@ export function SitemapDiagramProvider({
         name: pageData.name,
         slug: pageData.slug,
         description: pageData.description,
+        icon: pageData.icon,
         parentId: pageData.parentId,
         sortOrder: pageData.sortOrder,
       });
@@ -476,6 +478,7 @@ export function SitemapDiagramProvider({
       name: 'New Page',
       slug: tempSlug,
       description: null,
+      icon: null,
       sortOrder: validPosition,
       parentId: parentId,
       sections: [],
@@ -498,6 +501,7 @@ export function SitemapDiagramProvider({
         name: 'New Page',
         slug: tempSlug,
         description: null,
+        icon: null,
         sortOrder: validPosition,
       });
 
@@ -508,6 +512,7 @@ export function SitemapDiagramProvider({
             name: sibling.name,
             slug: sibling.slug,
             description: sibling.description,
+            icon: sibling.icon,
             parentId: sibling.parentId,
             sortOrder: sibling.sortOrder + 1,
           }),
@@ -526,6 +531,7 @@ export function SitemapDiagramProvider({
             name: actualPage.name,
             slug: actualPage.slug,
             description: actualPage.description,
+            icon: actualPage.icon,
             sortOrder: actualPage.sortOrder,
             parentId: actualPage.parentId,
             sections: [],

@@ -3,6 +3,7 @@ interface Page {
   name: string;
   slug: string;
   description: string | null;
+  icon: string | null;
   sortOrder: number;
   parentId: number | null;
   sections: Array<{

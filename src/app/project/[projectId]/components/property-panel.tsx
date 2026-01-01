@@ -14,6 +14,7 @@ interface Page {
   name: string;
   slug: string;
   description: string | null;
+  icon: string | null;
   sortOrder: number;
   parentId: number | null;
 }
@@ -50,13 +51,14 @@ export function PropertyPanel({ page, project, section, isOpen, isDragging = fal
     name: '',
     slug: '',
     description: '',
+    icon: '',
     componentType: '',
   });
   const queryClient = useQueryClient();
   
   // Get updatePage function from context for optimistic updates
   // Note: This will only work when PropertyPanel is within SitemapDiagramProvider
-  let updatePage: ((pageId: number, updates: { name?: string; slug?: string; description?: string | null }) => void) | null = null;
+  let updatePage: ((pageId: number, updates: { name?: string; slug?: string; description?: string | null; icon?: string | null }) => void) | null = null;
   try {
     const context = useSitemapDiagram();
     updatePage = context.updatePage;
@@ -78,6 +80,7 @@ export function PropertyPanel({ page, project, section, isOpen, isDragging = fal
         name: page.name,
         slug: page.slug,
         description: page.description || '',
+        icon: page.icon || '',
         componentType: '',
       });
     } else if (project) {
@@ -91,12 +94,13 @@ export function PropertyPanel({ page, project, section, isOpen, isDragging = fal
   }, [page, project, section]);
 
   const updatePageMutation = useMutation({
-    mutationFn: async (data: { name: string; slug: string; description: string | null }) => {
+    mutationFn: async (data: { name: string; slug: string; description: string | null; icon: string | null }) => {
       if (!page) throw new Error('No page selected');
       return client.api.pages({ id: page.id.toString() }).put({
         name: data.name,
         slug: data.slug,
         description: data.description || null,
+        icon: data.icon || null,
         parentId: page.parentId,
         sortOrder: page.sortOrder,
       });
@@ -179,12 +183,14 @@ export function PropertyPanel({ page, project, section, isOpen, isDragging = fal
           name: formData.name,
           slug: formData.slug,
           description: formData.description || null,
+          icon: formData.icon || null,
         });
       }
       await updatePageMutation.mutateAsync({
         name: formData.name,
         slug: formData.slug,
         description: formData.description || null,
+        icon: formData.icon || null,
       });
     }
   };
@@ -252,6 +258,54 @@ export function PropertyPanel({ page, project, section, isOpen, isDragging = fal
                   required
                 />
               </div>
+            </div>
+          )}
+
+          {/* Icon Field - Only for pages */}
+          {!isEditingProject && !isEditingSection && (
+            <div className="space-y-1.5">
+              <label htmlFor="icon" className="text-sm font-medium text-foreground">
+                Icon
+              </label>
+              <select
+                id="icon"
+                value={formData.icon}
+                onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">Default</option>
+                <option value="home">Home</option>
+                <option value="info">Info</option>
+                <option value="folder">Folder</option>
+                <option value="phone">Phone</option>
+                <option value="shopping-cart">Shopping Cart</option>
+                <option value="users">Users</option>
+                <option value="settings">Settings</option>
+                <option value="mail">Mail</option>
+                <option value="calendar">Calendar</option>
+                <option value="image">Image</option>
+                <option value="music">Music</option>
+                <option value="video">Video</option>
+                <option value="book">Book</option>
+                <option value="map">Map</option>
+                <option value="heart">Heart</option>
+                <option value="star">Star</option>
+                <option value="search">Search</option>
+                <option value="bell">Bell</option>
+                <option value="camera">Camera</option>
+                <option value="gift">Gift</option>
+                <option value="coffee">Coffee</option>
+                <option value="gamepad-2">Gamepad</option>
+                <option value="laptop">Laptop</option>
+                <option value="smartphone">Smartphone</option>
+                <option value="globe">Globe</option>
+                <option value="lock">Lock</option>
+                <option value="unlock">Unlock</option>
+                <option value="eye">Eye</option>
+                <option value="download">Download</option>
+                <option value="upload">Upload</option>
+                <option value="share">Share</option>
+              </select>
             </div>
           )}
 

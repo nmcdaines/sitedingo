@@ -472,13 +472,18 @@ export function SitemapDiagramProvider({
     // Generate temporary ID for optimistic update
     const tempId = -Date.now();
     const tempSlug = `new-page-${Date.now()}`;
+    
+    // Determine if this is a home page (root level with no parent, or slug === '/')
+    // For now, we'll check the name since we don't know the final slug yet
+    // The API will handle slug === '/' check
+    const isHomePage = parentId === null && dataState.pages.filter(p => p.parentId === null).length === 0;
 
     const optimisticPage: Page = {
       id: tempId,
       name: 'New Page',
       slug: tempSlug,
       description: null,
-      icon: null,
+      icon: isHomePage ? 'home' : null,
       sortOrder: validPosition,
       parentId: parentId,
       sections: [],
@@ -494,6 +499,12 @@ export function SitemapDiagramProvider({
     });
 
     try {
+      // Determine if this is a home page - check if it's the root page (no parent and no other root pages)
+      // Also check if the name suggests it's a home page
+      const rootPages = dataState.pages.filter(p => p.parentId === null);
+      const isHomePage = parentId === null && rootPages.length === 0;
+      const defaultIcon = isHomePage ? 'home' : null;
+
       // Create the new page via API
       const newPage = await client.api.pages.post({
         sitemapId: sitemapId,
@@ -501,7 +512,7 @@ export function SitemapDiagramProvider({
         name: 'New Page',
         slug: tempSlug,
         description: null,
-        icon: null,
+        icon: defaultIcon,
         sortOrder: validPosition,
       });
 

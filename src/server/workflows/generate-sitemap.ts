@@ -168,13 +168,16 @@ async function populateSitemap(projectId: number, projectDescription: string, pa
       }
     }
 
+    // Set home icon by default for home pages (slug === '/')
+    const defaultIcon = slug === '/' ? 'home' : null;
+
     const pageRecord = await db.insert(schema.pages).values({
       sitemapId: sitemap.id,
       parentId,
       name: pageInfo.name,
       description: '',
       slug: slug,
-      icon: null,
+      icon: defaultIcon,
       sortOrder: pageIndex,
     }).returning().then(res => res[0]);
 

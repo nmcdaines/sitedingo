@@ -93,13 +93,17 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
       }
     }
 
+    // Set home icon by default for home pages (slug === '/' or name is "Home")
+    const isHomePage = body.slug === '/' || body.name.toLowerCase() === 'home';
+    const defaultIcon = body.icon || (isHomePage ? 'home' : null);
+
     const page = await db.insert(schema.pages).values({
       sitemapId: body.sitemapId,
       parentId: body.parentId || null,
       name: body.name,
       slug: body.slug,
       description: body.description || null,
-      icon: body.icon || null,
+      icon: defaultIcon,
       sortOrder: body.sortOrder || 0,
     }).returning().then(res => res[0])
 

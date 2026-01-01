@@ -116,9 +116,6 @@ export function EditorHeader({ project }: EditorHeaderProps) {
                 >
                   {project.name}
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  /project/{projectId}
-                </span>
               </>
             )}
           </div>

@@ -160,9 +160,9 @@ export function PageTreeNode({
         dropZone={<>
           {canHaveChildren && activeId && (
             <EmptySpaceDropZone
-              id={`reorder-${node.parentId ?? 'root'}-${node.sortOrder}`}
               parentId={node.parentId}
               position={node.sortOrder}
+              type="page"
               width={12}
               height={60}
               isVisible={true}
@@ -172,9 +172,9 @@ export function PageTreeNode({
 
           {canHaveChildren && activeId && (
             <EmptySpaceDropZone
-              id={`reorder-${node.parentId ?? 'root'}-${node.sortOrder + 1}`}
               parentId={node.parentId}
               position={node.sortOrder + 1}
+              type="page"
               width={12}
               height={60}
               isVisible={true}
@@ -211,9 +211,9 @@ export function PageTreeNode({
                 >
                   {canHaveChildren && activeId && (
                     <EmptySpaceDropZone
-                      id={`reorder-${node.id}-${index}`}
                       parentId={node.id}
                       position={index}
+                      type="page"
                       width={12}
                       height={60}
                       isVisible={true}
@@ -223,9 +223,9 @@ export function PageTreeNode({
 
                   {canHaveChildren && activeId && (
                     <EmptySpaceDropZone
-                      id={`reorder-${node.id}-${index + 1}`}
                       parentId={node.id}
                       position={index + 1}
+                      type="page"
                       width={12}
                       height={60}
                       isVisible={true}

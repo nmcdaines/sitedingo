@@ -15,14 +15,24 @@ interface DragContextProps {
  * Early returns and minimal filtering for better performance
  */
 const sectionCollisionDetection: CollisionDetection = (args) => {
+  const activeData = args.active.data.current;
+  const dragType = activeData?.type;
+
   // First try pointerWithin for better detection with transformed containers
   const pointerCollisions = pointerWithin(args);
   
   if (pointerCollisions.length > 0) {
-    // Fast path: find section drop zones directly
+    // Fast path: find section drop zones directly and validate type
     for (const collision of pointerCollisions) {
       if (typeof collision.id === 'string') {
         if (collision.id.startsWith('section-drop-') || collision.id.startsWith('drop-section-page-')) {
+          // Check that the drop zone expects sections
+          const overData = collision.data?.current;
+          if (overData && (overData as { expectedType?: string }).expectedType) {
+            if ((overData as { expectedType: string }).expectedType !== 'section') {
+              continue;
+            }
+          }
           return [collision];
         }
       }
@@ -34,10 +44,17 @@ const sectionCollisionDetection: CollisionDetection = (args) => {
   // Fall back to closestCenter for center-based detection
   const collisions = closestCenter(args);
   
-  // Fast path: find first section drop zone
+  // Fast path: find first section drop zone and validate type
   for (const collision of collisions) {
     if (typeof collision.id === 'string') {
       if (collision.id.startsWith('section-drop-') || collision.id.startsWith('drop-section-page-')) {
+        // Check that the drop zone expects sections
+        const overData = collision.data?.current;
+        if (overData && (overData as { expectedType?: string }).expectedType) {
+          if ((overData as { expectedType: string }).expectedType !== 'section') {
+            continue;
+          }
+        }
         return [collision];
       }
     }
@@ -76,9 +93,20 @@ const unifiedCollisionDetection: CollisionDetection = (args) => {
 
       if (pageCollisions.length === 0) return [];
 
-      // Prioritize page-related drop zones
+      // Prioritize page-related drop zones and validate type
       const dropZoneCollision = pageCollisions.find(
-        collision => typeof collision.id === 'string' && collision.id.startsWith('reorder-')
+        collision => {
+          if (typeof collision.id !== 'string' || !collision.id.startsWith('reorder-')) {
+            return false;
+          }
+          // Check that the drop zone expects pages
+          const overData = collision.data?.current;
+          if (overData && (overData as { expectedType?: string }).expectedType) {
+            return (overData as { expectedType: string }).expectedType === 'page';
+          }
+          // If no expectedType, assume it's a page drop zone (backward compatibility)
+          return true;
+        }
       );
       if (dropZoneCollision) {
         return [dropZoneCollision];
@@ -120,8 +148,20 @@ const unifiedCollisionDetection: CollisionDetection = (args) => {
     const closest = pageCollisions[0];
     if (!closest) return pageCollisions;
     
-    // If the closest is a drop zone, prefer it (for re-ordering)
+    // If the closest is a drop zone, prefer it (for re-ordering) and validate type
     if (typeof closest.id === 'string' && closest.id.startsWith('reorder-')) {
+      // Check that the drop zone expects pages
+      const overData = closest.data?.current;
+      if (overData && (overData as { expectedType?: string }).expectedType) {
+        if ((overData as { expectedType: string }).expectedType !== 'page') {
+          // If type doesn't match, try other collisions
+          const otherCollisions = pageCollisions.filter(c => c !== closest);
+          if (otherCollisions.length > 0) {
+            return otherCollisions;
+          }
+          return [];
+        }
+      }
       return [closest];
     }
     

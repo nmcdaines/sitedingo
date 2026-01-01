@@ -622,6 +622,12 @@ export function SitemapDiagramProvider({
     }
     // Case 2: Dropped on an empty space drop zone (re-ordering)
     else if (overId.startsWith('reorder-')) {
+      // Validate that the drop zone expects pages
+      const overData = over.data.current;
+      if (overData && (overData as { expectedType?: string }).expectedType !== 'page') {
+        return;
+      }
+
       const match = overId.match(/^reorder-(root|\d+)-(\d+)$/);
       if (!match) {
         return;
@@ -734,6 +740,12 @@ export function SitemapDiagramProvider({
     let targetPosition: number;
 
     if (overId.startsWith('section-drop-')) {
+      // Validate that the drop zone expects sections
+      const overData = over.data.current;
+      if (overData && (overData as { expectedType?: string }).expectedType !== 'section') {
+        return;
+      }
+
       const match = overId.match(/^section-drop-(\d+)-(\d+)$/);
       if (!match) {
         return;
@@ -742,6 +754,12 @@ export function SitemapDiagramProvider({
       targetPageId = parseInt(match[1]);
       targetPosition = parseInt(match[2]);
     } else if (overId.startsWith('drop-section-page-')) {
+      // Validate that the drop zone expects sections
+      const overData = over.data.current;
+      if (overData && (overData as { expectedType?: string }).expectedType !== 'section') {
+        return;
+      }
+
       const match = overId.match(/^drop-section-page-(\d+)$/);
       if (!match) {
         return;

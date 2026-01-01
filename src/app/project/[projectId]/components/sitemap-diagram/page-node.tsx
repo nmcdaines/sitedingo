@@ -127,6 +127,7 @@ export function PageNode({ node, onClick, isDragging, onEdit, onDelete, onDuplic
     id: `drop-section-page-${node.id}`,
     data: {
       type: 'section-page-drop',
+      expectedType: 'section',
       pageId: node.id,
       position: node.sections.length,
     },
@@ -290,7 +291,6 @@ export function PageNode({ node, onClick, isDragging, onEdit, onDelete, onDuplic
                 <>
                   {/* Drop zone at the beginning - always show when dragging sections */}
                   <SectionDropZone
-                    id={`section-drop-${node.id}-0`}
                     pageId={node.id}
                     position={0}
                     isVisible={activeId?.startsWith('section-') || false}
@@ -313,7 +313,6 @@ export function PageNode({ node, onClick, isDragging, onEdit, onDelete, onDuplic
                         />
                         {/* Drop zone after each section - always show when dragging sections */}
                         <SectionDropZone
-                          id={`section-drop-${node.id}-${index + 1}`}
                           pageId={node.id}
                           position={index + 1}
                           isVisible={activeId?.startsWith('section-') || false}
@@ -337,7 +336,6 @@ export function PageNode({ node, onClick, isDragging, onEdit, onDelete, onDuplic
                 <>
                   {/* Drop zone for empty page when dragging - always show when dragging sections */}
                   <SectionDropZone
-                    id={`section-drop-${node.id}-0`}
                     pageId={node.id}
                     position={0}
                     isVisible={activeId?.startsWith('section-') || false}

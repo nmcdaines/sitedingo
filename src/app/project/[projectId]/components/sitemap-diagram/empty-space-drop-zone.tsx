@@ -2,11 +2,12 @@
 
 import { cn } from '@/lib/utils';
 import { useDroppable } from '@dnd-kit/core';
+import { useMemo } from 'react';
 
 interface EmptySpaceDropZoneProps {
-  id: string;
   parentId: number | null;
   position: number;
+  type: 'page' | 'section';
   x?: number;
   y?: number;
   width?: number;
@@ -16,14 +17,25 @@ interface EmptySpaceDropZoneProps {
 }
 
 export function EmptySpaceDropZone({
-  id,
   parentId,
   position,
+  type,
   width = 280,
   height = 60,
   isVisible = false,
   className = '',
 }: EmptySpaceDropZoneProps) {
+  // Generate ID internally from parentId and position
+  const id = useMemo(() => {
+    if (type === 'page') {
+      return `reorder-${parentId ?? 'root'}-${position}`;
+    } else {
+      // For sections, we'd use a different pattern if needed
+      // For now, sections use SectionDropZone, but keeping this for consistency
+      return `reorder-section-${parentId ?? 'root'}-${position}`;
+    }
+  }, [parentId, position, type]);
+
   const {
     setNodeRef,
     isOver,
@@ -31,6 +43,7 @@ export function EmptySpaceDropZone({
     id,
     data: {
       type: 'empty-space',
+      expectedType: type,
       parentId,
       position,
     },

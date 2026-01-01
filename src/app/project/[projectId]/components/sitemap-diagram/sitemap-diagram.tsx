@@ -633,9 +633,9 @@ export function SitemapDiagram({
                         }}
                       >
                         <EmptySpaceDropZone
-                          id={`reorder-root-${index}`}
                           parentId={null}
                           position={index}
+                          type="page"
                           width={280}
                           height={80}
                           isVisible={true}
@@ -694,9 +694,9 @@ export function SitemapDiagram({
                         }}
                       >
                         <EmptySpaceDropZone
-                          id={`reorder-root-${index + 1}`}
                           parentId={null}
                           position={index + 1}
+                          type="page"
                           width={280}
                           height={80}
                           isVisible={true}

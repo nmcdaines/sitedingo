@@ -5,25 +5,30 @@ import { useDroppable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 
 interface SectionDropZoneProps {
-  id: string;
   pageId: number;
   position: number;
   isVisible?: boolean;
 }
 
-export function SectionDropZone({ id, pageId, position }: SectionDropZoneProps) {
+export function SectionDropZone({ pageId, position }: SectionDropZoneProps) {
+  // Generate ID internally from pageId and position
+  const id = useMemo(() => {
+    return `section-drop-${pageId}-${position}`;
+  }, [pageId, position]);
+
   const { setNodeRef, isOver, active } = useDroppable({
     id,
     data: {
       type: 'section-drop-zone',
+      expectedType: 'section',
       pageId,
       position,
     },
   });
 
   const isActiveElementSection = useMemo(() => {
-    return active?.id.toString().startsWith('section-');
-  }, [active?.id]);
+    return active?.data.current?.type === 'section';
+  }, [active?.data.current?.type]);
 
   // Always render the drop zone (for drag detection) but make it invisible when not needed
   return (

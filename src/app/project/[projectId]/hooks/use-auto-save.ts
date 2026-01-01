@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { client } from '@/lib/client';
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -20,6 +18,18 @@ export function useAutoSave<T>(
   const timeoutRef = useRef<NodeJS.Timeout>();
   const dataRef = useRef(data);
   const isInitialMount = useRef(true);
+  
+  // Store callbacks in refs to avoid dependency issues
+  const saveFnRef = useRef(saveFn);
+  const onSaveRef = useRef(onSave);
+  const onErrorRef = useRef(onError);
+
+  // Update refs when callbacks change
+  useEffect(() => {
+    saveFnRef.current = saveFn;
+    onSaveRef.current = onSave;
+    onErrorRef.current = onError;
+  }, [saveFn, onSave, onError]);
 
   // Update ref when data changes
   useEffect(() => {
@@ -44,9 +54,9 @@ export function useAutoSave<T>(
     // Set new timeout
     timeoutRef.current = setTimeout(async () => {
       try {
-        await saveFn(dataRef.current);
+        await saveFnRef.current(dataRef.current);
         setStatus('saved');
-        onSave?.();
+        onSaveRef.current?.();
         
         // Reset to idle after 2 seconds
         setTimeout(() => {
@@ -54,7 +64,7 @@ export function useAutoSave<T>(
         }, 2000);
       } catch (error) {
         setStatus('error');
-        onError?.(error instanceof Error ? error : new Error('Save failed'));
+        onErrorRef.current?.(error instanceof Error ? error : new Error('Save failed'));
         
         // Reset to idle after 5 seconds on error
         setTimeout(() => {
@@ -68,7 +78,7 @@ export function useAutoSave<T>(
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [data, debounceMs, saveFn, onSave, onError]);
+  }, [data, debounceMs]);
 
   return status;
 }

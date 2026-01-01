@@ -54,6 +54,17 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
     await addPage(parentId, targetPosition);
   };
 
+
+  // Handle adding a new child page
+  const handleAddChildPage = async () => {
+    if (!pageData) {
+      console.error('Missing page data for node:', node.id);
+      return;
+    }
+
+    await addPage(node.id, 0);
+  };
+
   const {
     attributes,
     listeners,
@@ -174,7 +185,7 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
       className={cn("transition-[scale] duration-200", isDragging ? "scale-105 z-[9999]" : "")}
     >
       <div className="px-[30px] relative group">
-        <div className="w-[280px] ml-auto mr-auto relative rounded-lg pointer-events-auto">
+        <div className={cn("w-[280px] ml-auto mr-auto relative rounded-lg pointer-events-auto", node.children?.length <= 0 && 'pb-12')}>
           {/* Header */}
           <div
             className={cn("relative flex items-center justify-between mb-2 bg-gray-600/10 rounded py-2 px-2 shadow-sm", isDragging && "border-2 border-primary/50")}
@@ -314,8 +325,30 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
             </div>
           )}
 
+            {/* Add child page button - appears on hover below leaf nodes */}
+          {node.children.length <= 0 && (
+            <div className={cn('absolute pt-2 hidden z-10 left-1/2 -translate-x-1/2', !activeId && 'group-hover:block')}>
+              <Button
+                variant="outline"
+                className='add-button'
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  handleAddChildPage();
+                }}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                }}
+                style={{ zIndex: 9999 }}
+              >
+                <PlusIcon className="w-4 h-4" />
+              </Button>
+            </div>
 
+          )}
         </div>
+
+
         {dropZone}
       </div>
 

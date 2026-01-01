@@ -142,25 +142,6 @@ export function PageTreeNode({
           onSectionSelect={onSectionSelect}
         />
 
-        {/* Add child page button - appears on hover below leaf nodes */}
-        <div className={cn('mt-2 hidden z-10', !activeId && 'group-hover:block')}>
-          <Button
-            variant="outline"
-            className='add-button'
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              handleAddChildPage();
-            }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-            }}
-            style={{ zIndex: 9999 }}
-          >
-            <PlusIcon className="w-4 h-4" />
-          </Button>
-        </div>
-
         {children}
       </div>
     );

@@ -108,15 +108,6 @@ export function PageTreeNode({
   const sortedChildren = [...node.children].sort((a, b) => a.sortOrder - b.sortOrder);
   const canHaveChildren = true; // Allow all pages to have children
 
-  // Handle adding a new child page
-  const handleAddChildPage = async () => {
-    if (!pageData) {
-      console.error('Missing page data for node:', node.id);
-      return;
-    }
-    
-    await addPage(node.id, 0);
-  };
 
   // Base case: render a single page node
   if (sortedChildren.length === 0) {
@@ -141,25 +132,6 @@ export function PageTreeNode({
           } : undefined}
           onSectionSelect={onSectionSelect}
         />
-
-        {/* Add child page button - appears on hover below leaf nodes */}
-        <div className={cn('mt-2 hidden z-10', !activeId && 'group-hover:block')}>
-          <Button 
-            variant="outline"
-            className='add-button'
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              handleAddChildPage();
-            }}
-            onMouseDown={(e) => {
-              e.stopPropagation();
-            }}
-            style={{ zIndex: 9999 }}
-          >
-            <PlusIcon className="w-4 h-4" />
-          </Button>
-        </div>
 
         {children}
       </div>
@@ -274,4 +246,3 @@ export function PageTreeNode({
     </div>
   );
 }
-

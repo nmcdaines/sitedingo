@@ -45,39 +45,164 @@ async function populateSitemap(projectId: number, projectDescription: string, pa
 
   if (!sitemap) throw new Error("Unable to create sitemap");
 
-  // First, create all pages and save them to the database
-  const pageRecords: Array<{ id: number; name: string }> = [];
-  let pageIndex = 0;
+  // Build a map of all required pages including intermediate parents
+  // Key: slug, Value: { name, fromAI: boolean, aiPage?: page object }
+  const pagesMap = new Map<string, { name: string; fromAI: boolean; aiPage?: typeof aiSitemap.object[0] }>();
+
+  // First, add all pages from AI sitemap
   for (const page of aiSitemap.object) {
+    pagesMap.set(page.slug, { name: page.name, fromAI: true, aiPage: page });
+  }
+
+  // Merge "/" and "/home" pages - treat them as the same
+  const hasRoot = pagesMap.has('/');
+  const hasHome = pagesMap.has('/home');
+  
+  if (hasHome) {
+    const homePage = pagesMap.get('/home');
+    if (homePage) {
+      if (hasRoot) {
+        // Both exist - keep "/" and merge the name if "/" has a generic name
+        const rootPage = pagesMap.get('/');
+        if (rootPage && (rootPage.name === 'Home' || !rootPage.fromAI)) {
+          // Use the name from "/home" if it's more descriptive
+          rootPage.name = homePage.name;
+          rootPage.fromAI = rootPage.fromAI || homePage.fromAI;
+          if (homePage.aiPage && !rootPage.aiPage) {
+            rootPage.aiPage = homePage.aiPage;
+          }
+        }
+        // Remove "/home"
+        pagesMap.delete('/home');
+      } else {
+        // Only "/home" exists - convert it to "/"
+        pagesMap.set('/', homePage);
+        pagesMap.delete('/home');
+      }
+    }
+  }
+
+  // Ensure "/" root page always exists
+  if (!pagesMap.has('/')) {
+    pagesMap.set('/', { name: 'Home', fromAI: false });
+  }
+
+  // Convert any slugs that start with "/home" to start with "/" instead
+  const slugsToUpdate = Array.from(pagesMap.keys()).filter(slug => slug.startsWith('/home'));
+  for (const oldSlug of slugsToUpdate) {
+    if (oldSlug === '/home') continue; // Already handled above
+    
+    const newSlug = oldSlug.replace(/^\/home/, '/');
+    const pageInfo = pagesMap.get(oldSlug);
+    if (pageInfo) {
+      // Only update if the new slug doesn't already exist
+      if (!pagesMap.has(newSlug)) {
+        pagesMap.set(newSlug, pageInfo);
+      }
+      pagesMap.delete(oldSlug);
+    }
+  }
+
+  // Extract all slugs and ensure parent pages exist
+  const allSlugs = Array.from(pagesMap.keys());
+  for (const slug of allSlugs) {
+    if (slug === '/') continue; // Skip root, already handled
+
+    // Parse slug into segments (e.g., "/services/consulting" -> ["", "services", "consulting"])
+    const segments = slug.split('/').filter(s => s !== '');
+    
+    // Build parent slugs and ensure they exist
+    let currentPath = '';
+    for (let i = 0; i < segments.length - 1; i++) {
+      currentPath += '/' + segments[i];
+      
+      // If parent doesn't exist, create a blank page for it
+      if (!pagesMap.has(currentPath)) {
+        // Generate a name from the slug segment (e.g., "services" -> "Services")
+        const segmentName = segments[i].split('-').map(word => 
+          word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' ');
+        pagesMap.set(currentPath, { name: segmentName, fromAI: false });
+      }
+    }
+  }
+
+  // Create a map to track created page records (slug -> page record)
+  const createdPages = new Map<string, { id: number; name: string; slug: string }>();
+
+  // Sort slugs to ensure parents are created before children
+  const sortedSlugs = Array.from(pagesMap.keys()).sort((a, b) => {
+    const depthA = a.split('/').filter(s => s !== '').length;
+    const depthB = b.split('/').filter(s => s !== '').length;
+    if (depthA !== depthB) return depthA - depthB;
+    return a.localeCompare(b);
+  });
+
+  // Create all pages in order (parents first)
+  let pageIndex = 0;
+  for (const slug of sortedSlugs) {
+    const pageInfo = pagesMap.get(slug);
+    if (!pageInfo) continue;
+
+    // Determine parentId
+    let parentId: number | null = null;
+    if (slug !== '/') {
+      const segments = slug.split('/').filter(s => s !== '');
+      if (segments.length > 1) {
+        // Get parent slug
+        const parentSlug = '/' + segments.slice(0, -1).join('/');
+        const parentPage = createdPages.get(parentSlug);
+        if (parentPage) {
+          parentId = parentPage.id;
+        }
+      } else {
+        // Direct child of root
+        const rootPage = createdPages.get('/');
+        if (rootPage) {
+          parentId = rootPage.id;
+        }
+      }
+    }
+
     const pageRecord = await db.insert(schema.pages).values({
       sitemapId: sitemap.id,
-      name: page.name,
+      parentId,
+      name: pageInfo.name,
       description: '',
-      slug: page.slug,
+      slug: slug,
       sortOrder: pageIndex,
     }).returning().then(res => res[0]);
 
-    console.log(`page added: `, page);
-
     if (!pageRecord) {
-      throw new Error(`Unable to create page: ${page.name}`);
+      throw new Error(`Unable to create page: ${pageInfo.name}`);
     }
 
-    pageRecords.push({ id: pageRecord.id, name: pageRecord.name });
+    createdPages.set(slug, { id: pageRecord.id, name: pageRecord.name, slug: pageRecord.slug });
+    console.log(`page added: ${pageRecord.name} (${slug})`);
     pageIndex++;
   }
 
-  // Then, populate all pages with their sections in parallel
+  // Only populate pages that were generated by AI (not intermediate parent pages)
+  const pagesToPopulate = Array.from(pagesMap.entries())
+    .filter(([_, info]) => info.fromAI && info.aiPage)
+    .map(([slug, _]) => {
+      const pageRecord = createdPages.get(slug);
+      return pageRecord;
+    })
+    .filter((page): page is { id: number; name: string; slug: string } => page !== undefined);
+
+  // Populate all AI-generated pages with their sections in parallel
   const populateResults = await Promise.allSettled(
-    pageRecords.map(pageRecord =>
-      populatePage(pageRecord.id, pageRecord.name, projectDescription)
-    )
+    pagesToPopulate.map(pageRecord => {
+      const pageInfo = pagesMap.get(pageRecord.slug);
+      return populatePage(pageRecord.id, pageInfo?.aiPage?.name || pageRecord.name, projectDescription);
+    })
   );
 
   // Log any failures
   populateResults.forEach((result, index) => {
     if (result.status === 'rejected') {
-      console.error(`Failed to populate page ${pageRecords[index].name}:`, result.reason);
+      console.error(`Failed to populate page ${pagesToPopulate[index].name}:`, result.reason);
     }
   });
 }

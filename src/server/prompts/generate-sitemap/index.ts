@@ -17,7 +17,7 @@ export async function generateAiSitemap(userPrompt: string, pagesCount: string =
   const prompt = await loadPrompt('generate-sitemap/prompt.md');
   
   const fullUserPrompt = `
-Please generate ${pagesCount} pages.
+Please generate ${pagesCount} pages (in addition to the homepage, which is always included).
 
 ${userPrompt}
   `.trim();

@@ -168,7 +168,7 @@ export function PageTreeNode({
 
   // Render parent with children
   return (
-    <div className="flex flex-col items-center" style={{ width: 'max-content', minWidth: '280px', overflow: 'visible' }}>
+    <div className="flex flex-col items-center pointer-events-none" style={{ width: 'max-content', minWidth: '280px', overflow: 'visible' }}>
       {/* Parent node */}
       <PageNode
         node={node}

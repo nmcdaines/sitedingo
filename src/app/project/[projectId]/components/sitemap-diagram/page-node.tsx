@@ -231,7 +231,10 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
 
             <div className="flex items-center gap-2">
               <Icon className="w-5 h-5 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground">{node.name}</h3>
+              <div className="flex flex-col gap-0.5">
+                <h3 className="text-sm font-semibold text-foreground">{node.name}</h3>
+                <span className="text-xs text-muted-foreground">{node.slug}</span>
+              </div>
             </div>
             <div ref={contextMenuRef} onClick={(e) => e.stopPropagation()}>
               <ContextMenu

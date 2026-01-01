@@ -98,7 +98,7 @@ export function EditorHeader({ project }: EditorHeaderProps) {
               <ArrowLeft className="w-4 h-4 text-primary" />
             </div>
           </Link>
-          <div className="flex items-center gap-1 ml-2">
+          <div className="flex flex-col gap-0.5 ml-2">
             {isEditing ? (
               <Input
                 ref={inputRef}
@@ -109,12 +109,17 @@ export function EditorHeader({ project }: EditorHeaderProps) {
                 onKeyDown={handleNameKeyDown}
               />
             ) : (
-              <span 
-                className="font-semibold cursor-pointer hover:text-primary transition-colors"
-                onClick={handleNameClick}
-              >
-                {project.name}
-              </span>
+              <>
+                <span 
+                  className="font-semibold cursor-pointer hover:text-primary transition-colors"
+                  onClick={handleNameClick}
+                >
+                  {project.name}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  /project/{projectId}
+                </span>
+              </>
             )}
           </div>
         </div>

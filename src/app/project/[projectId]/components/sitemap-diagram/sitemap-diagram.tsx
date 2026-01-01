@@ -447,7 +447,6 @@ export function SitemapDiagram({
       e.stopPropagation();
       setMouseDownOnEmptySpace(true);
       mouseDownWasOnEmptySpaceRef.current = true;
-      setMouseDownPos({ x: e.clientX, y: e.clientY });
       setIsPanning(true);
       setPanStart({ x: e.clientX, y: e.clientY });
     } else {

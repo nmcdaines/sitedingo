@@ -2,7 +2,7 @@ import { db, schema } from "@/db"
 import { generateAiSitemap, generateAiPage } from "../prompts";
 import { eq } from "drizzle-orm";
 
-export async function generateSitemapWorkflow(projectId: number) {
+export async function generateSitemapWorkflow(projectId: number, pagesCount: string = "2-5") {
   'use workflow'
 
   const project = await db.query.projects.findFirst({
@@ -16,7 +16,7 @@ export async function generateSitemapWorkflow(projectId: number) {
   if (!project.description) throw new Error(`Project with ID ${projectId} has no description`);
 
   try {
-    const sitemap = await populateSitemap(project.id, project.description);
+    const sitemap = await populateSitemap(project.id, project.description, pagesCount);
 
     console.log(`done`);
   } finally {
@@ -30,10 +30,10 @@ export async function generateSitemapWorkflow(projectId: number) {
   }
 }
 
-async function populateSitemap(projectId: number, projectDescription: string) {
+async function populateSitemap(projectId: number, projectDescription: string, pagesCount: string) {
   'use step'
 
-  const aiSitemap = await generateAiSitemap(projectDescription);
+  const aiSitemap = await generateAiSitemap(projectDescription, pagesCount);
 
   const sitemap = await db.insert(schema.sitemaps).values({
     projectId,

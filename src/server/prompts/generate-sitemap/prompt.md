@@ -1,6 +1,6 @@
 ---
 model: google/gemini-2.5-flash
-maxTokens: 3000
+maxTokens: 5000
 description: Generates website sitemaps based on business description
 ---
 

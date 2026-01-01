@@ -206,6 +206,30 @@ function EditorContent({ projectId }: { projectId: string }) {
   const [canUndo, setCanUndo] = React.useState(false);
   const [canRedo, setCanRedo] = React.useState(false);
   const [isDragging, setIsDragging] = React.useState(false);
+  const [showSuccessNotification, setShowSuccessNotification] = React.useState(false);
+  const prevIsGeneratingRef = React.useRef<boolean | undefined>(undefined);
+  
+  // Detect when generation completes (transitions from true to false)
+  // This must be before any conditional returns to follow Rules of Hooks
+  React.useEffect(() => {
+    if (!project) return;
+    
+    const prevIsGenerating = prevIsGeneratingRef.current;
+    const currentIsGenerating = project.isGenerating;
+
+    // If it transitioned from generating to not generating, show success notification
+    if (prevIsGenerating === true && currentIsGenerating === false) {
+      setShowSuccessNotification(true);
+      // Hide notification after 10 seconds
+      const timeout = setTimeout(() => {
+        setShowSuccessNotification(false);
+      }, 10000);
+      return () => clearTimeout(timeout);
+    }
+
+    // Update the ref for next comparison
+    prevIsGeneratingRef.current = currentIsGenerating;
+  }, [project?.isGenerating]);
   
   // Handle loading state
   if (query.isLoading) {
@@ -295,6 +319,31 @@ function EditorContent({ projectId }: { projectId: string }) {
             <span className="font-semibold">Generating your sitemap...</span>
             <span className="text-blue-700 ml-2">Pages and content are being created in real-time.</span>
           </p>
+        </div>
+      )}
+      {showSuccessNotification && (
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-b border-green-300 px-4 py-4 flex items-center gap-3 transition-all duration-300 ease-in-out shadow-sm">
+          <div className="flex-shrink-0">
+            <svg 
+              className="h-6 w-6 text-green-600 animate-pulse" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2.5} 
+                d="M5 13l4 4L19 7" 
+              />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <p className="text-base text-green-900">
+              <span className="font-bold text-lg">🎉 Your sitemap is ready!</span>
+              <span className="text-green-800 ml-2 font-medium">Start editing and bring your vision to life.</span>
+            </p>
+          </div>
         </div>
       )}
       <div className="flex flex-1 overflow-hidden relative">

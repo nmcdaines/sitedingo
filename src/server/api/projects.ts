@@ -239,7 +239,7 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
     if (!project) { throw new Error('Not created!'); }
 
     // Kick off workflow in background (don't await)
-    generateSitemapWorkflow(project.id).catch((error) => {
+    generateSitemapWorkflow(project.id, body.pagesCount).catch((error) => {
       console.error('Error in generateSitemapWorkflow:', error);
       // Optionally update project to mark as failed
     });
@@ -254,6 +254,7 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
     body: t.Object({
       name: t.String(),
       description: t.String(),
+      pagesCount: t.String(),
     }),
     response: {
       200: t.Object({

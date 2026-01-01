@@ -7,6 +7,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { client } from "@/lib/client";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Select } from "@/components/ui/select";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
@@ -22,6 +23,7 @@ export default function Home() {
           const project = await client.api.projects.post({
             name: formData.get('name') as string,
             description: formData.get('description') as string,
+            pagesCount: formData.get('pagesCount') as string,
           });
           if (project.data?.id) {
             router.push(`/project/${project.data.id}`);
@@ -35,6 +37,14 @@ export default function Home() {
     >
       <Input type="text" name="name" placeholder="Project Name" defaultValue="Gretta" disabled={isLoading} />
       <Textarea name="description" placeholder="Project Description" defaultValue="Gretta is a boutique Architectural firm based in Los Angeles that focuses on homes as well as smaller commercial and community projects." disabled={isLoading} />
+      <Select name="pagesCount" defaultValue="2-5" disabled={isLoading}>
+        <option value="1">1</option>
+        <option value="2-5">2-5</option>
+        <option value="5-10">5-10</option>
+        <option value="10-15">10-15</option>
+        <option value="15-20">15-20</option>
+        <option value="20+">20+</option>
+      </Select>
 
       <Button type="submit" disabled={isLoading}>
         {isLoading && <Spinner className="mr-2" />}

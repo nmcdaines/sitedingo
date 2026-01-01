@@ -167,6 +167,8 @@ export function PageTreeNode({
               height={60}
               isVisible={true}
               className='absolute bg-yellow-600/50 left-0 right-[calc(50%+140px)] top-0 h-full w-auto'
+              currentNode={{ id: node.id, position: node.sortOrder }}
+              direction="previous"
             />
           )}
 
@@ -179,6 +181,8 @@ export function PageTreeNode({
               height={60}
               isVisible={true}
               className='z-0 absolute bg-green-600/50 right-0 top-0 h-full left-[calc(50%+140px)] w-auto'
+              currentNode={{ id: node.id, position: node.sortOrder }}
+              direction="next"
             />
           )}
         </>}
@@ -218,6 +222,8 @@ export function PageTreeNode({
                       height={60}
                       isVisible={true}
                       className='absolute bg-pink-600/50 left-0 right-[calc(50%+140px)] top-0 h-full w-auto'
+                      currentNode={{ id: child.id, position: child.sortOrder }}
+                      direction="previous"
                     />
                   )}
 
@@ -230,6 +236,8 @@ export function PageTreeNode({
                       height={60}
                       isVisible={true}
                       className='z-0 absolute bg-blue-600/50 right-0 top-0 h-full left-[calc(50%+140px)] w-auto'
+                      currentNode={{ id: child.id, position: child.sortOrder }}
+                      direction="next"
                     />
                   )}
                 </PageTreeNode>

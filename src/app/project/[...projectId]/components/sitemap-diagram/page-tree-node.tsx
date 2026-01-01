@@ -121,7 +121,7 @@ export function PageTreeNode({
   // Base case: render a single page node
   if (sortedChildren.length === 0) {
     return (
-      <div className="flex flex-col items-center relative group pb-12">
+      <div className="flex flex-col items-center relative group pb-12 pointer-events-none">
         <PageNode
           node={node}
           isSelected={selectedNodeId === node.id}
@@ -168,7 +168,7 @@ export function PageTreeNode({
 
   // Render parent with children
   return (
-    <div className="flex flex-col items-center" style={{ width: 'max-content', minWidth: '280px', overflow: 'visible' }}>
+    <div className="flex flex-col items-center pointer-events-none" style={{ width: 'max-content', minWidth: '280px', overflow: 'visible' }}>
       {/* Parent node */}
       <PageNode
         node={node}

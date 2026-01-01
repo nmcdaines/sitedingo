@@ -6,16 +6,18 @@ const pageSchema = z.object({
   title: z.string().describe('The title of the page (should match the input page title)'),
   description: z.string().describe('A brief 1-2 sentence description summarizing what this page is about'),
   sections: z.array(z.object({
+    type: z.enum(['hero', 'text', 'testimonials', 'contact-form', 'features', 'pricing', 'faq', 'gallery', 'cta', 'about']).describe('The type of section component (hero, text, testimonials, contact-form, features, pricing, faq, gallery, cta, about)'),
     title: z.string().describe('A clear, descriptive heading for this content section'),
     content: z.string().describe('The actual content text for this section (2-4 paragraphs of relevant, detailed information)'),
   })).describe('Array of 3-6 content sections for the page')
 })
 
-export async function generateAiPage(pageTitle: string, businessDescription: string) {
+export async function generateAiPage(pageTitle: string, businessDescription: string, pageSlug?: string) {
   const systemPrompt = await loadPrompt('generate-page/prompt.md');
 
   const userPrompt = `
 Page Title: ${pageTitle}
+Page Slug: ${pageSlug || '/'}
 Business Description: ${businessDescription}
 
 Please generate complete, detailed content for this page.

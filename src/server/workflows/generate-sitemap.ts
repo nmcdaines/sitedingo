@@ -205,7 +205,7 @@ async function populateSitemap(projectId: number, projectDescription: string, pa
   const populateResults = await Promise.allSettled(
     pagesToPopulate.map(pageRecord => {
       const pageInfo = pagesMap.get(pageRecord.slug);
-      return populatePage(pageRecord.id, pageInfo?.aiPage?.name || pageRecord.name, projectDescription);
+      return populatePage(pageRecord.id, pageInfo?.aiPage?.name || pageRecord.name, projectDescription, pageRecord.slug);
     })
   );
 
@@ -217,10 +217,10 @@ async function populateSitemap(projectId: number, projectDescription: string, pa
   });
 }
 
-async function populatePage(pageId: number, pageTitle: string, businessDescription: string) {
+async function populatePage(pageId: number, pageTitle: string, businessDescription: string, pageSlug: string) {
   'use step'
 
-  const pageContent = await generateAiPage(pageTitle, businessDescription);
+  const pageContent = await generateAiPage(pageTitle, businessDescription, pageSlug);
 
   // Update page with generated description
   // await db.update(schema.pages)
@@ -232,7 +232,7 @@ async function populatePage(pageId: number, pageTitle: string, businessDescripti
   for (const section of pageContent.object.sections) {
     await db.insert(schema.sections).values({
       pageId,
-      componentType: 'text',
+      componentType: section.type,
       name: section.title,
       metadata: { content: section.content },
       sortOrder: sectionIndex,

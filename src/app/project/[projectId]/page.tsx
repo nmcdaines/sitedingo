@@ -9,6 +9,7 @@ import { EditorSidebar } from "./components/editor-sidebar";
 import { EditorCanvas } from "./components/editor-canvas";
 import { EditorFooter } from "./components/editor-footer";
 import { PropertyPanel } from "./components/property-panel";
+import { Spinner } from "@/components/ui/spinner";
 
 function useGetProjectQuery(projectId: string) {
   const query = useQuery({
@@ -25,7 +26,12 @@ function useGetProjectQuery(projectId: string) {
         throw new Error('Project not found');
       }
       return res.data;
-    }
+    },
+    // Poll every 2 seconds while the project is generating
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      return data?.isGenerating ? 2000 : false;
+    },
   })
   return [query.data, query] as const;
 }
@@ -111,23 +117,27 @@ function EditorContent({ projectId }: { projectId: string }) {
     );
   }
   
-  // Safety check: ensure project exists and has sitemaps
-  if (!project || !project.sitemaps) {
+  // Safety check: ensure project exists
+  if (!project) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p>Project not found or has no sitemaps.</p>
+        <p>Project not found.</p>
       </div>
     );
   }
+
+  // Get the first sitemap (may be empty or undefined while generating)
+  const sitemap = project.sitemaps?.[0];
   
-  // Get the first sitemap (projects should have at least one)
-  const sitemap = project.sitemaps[0];
-  
-  if (!sitemap) {
+  // If no sitemap exists yet and we're not generating, show error
+  if (!sitemap && !project.isGenerating) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <p>No sitemap found for this project.</p>
-      </div>
+      <>
+        <EditorHeader project={project} />
+        <div className="flex items-center justify-center h-full">
+          <p>No sitemap found for this project.</p>
+        </div>
+      </>
     );
   }
 
@@ -165,6 +175,15 @@ function EditorContent({ projectId }: { projectId: string }) {
   return (
     <>
       <EditorHeader project={project} />
+      {project.isGenerating && (
+        <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 flex items-center gap-2">
+          <Spinner className="h-4 w-4 text-blue-600" />
+          <p className="text-sm text-blue-900">
+            <span className="font-semibold">Generating your sitemap...</span>
+            <span className="text-blue-700 ml-2">Pages and content are being created in real-time.</span>
+          </p>
+        </div>
+      )}
       <div className="flex flex-1 overflow-hidden relative">
         <EditorSidebar 
           onUndo={() => {
@@ -180,21 +199,35 @@ function EditorContent({ projectId }: { projectId: string }) {
           isPropertyPanelOpen={isPropertyPanelOpen}
           onTogglePropertyPanel={handleTogglePropertyPanel}
         />
-        <EditorCanvas 
-          project={project} 
-          sitemap={sitemap} 
-          zoom={zoom} 
-          onZoomChange={setZoom}
-          onSaveStatusChange={setSaveStatus}
-          onPageSelect={handlePageSelect}
-          onSectionSelect={handleSectionSelect}
-          selectedPageId={selectedPage?.id}
-          onUndo={() => setCanUndo(false)}
-          onRedo={() => setCanRedo(false)}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onDragStateChange={setIsDragging}
-        />
+        {sitemap ? (
+          <EditorCanvas 
+            project={project} 
+            sitemap={sitemap} 
+            zoom={zoom} 
+            onZoomChange={setZoom}
+            onSaveStatusChange={setSaveStatus}
+            onPageSelect={handlePageSelect}
+            onSectionSelect={handleSectionSelect}
+            selectedPageId={selectedPage?.id}
+            onUndo={() => setCanUndo(false)}
+            onRedo={() => setCanRedo(false)}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onDragStateChange={setIsDragging}
+          />
+        ) : (
+          <div className="flex-1 flex items-center justify-center bg-[#f5f5f0]">
+            <div className="text-center space-y-4">
+              <Spinner className="mx-auto h-8 w-8" />
+              <div>
+                <p className="text-lg font-semibold">Creating your sitemap</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Generating pages and content...
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         <PropertyPanel
           page={selectedPage}
           project={project}

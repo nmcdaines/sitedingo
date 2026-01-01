@@ -34,6 +34,7 @@ export const projects = pgTable("projects", (t) => ({
   teamId: t.integer().notNull().references(() => teams.id, { onDelete: "cascade" }),
   name: t.varchar({ length: 255 }).notNull(),
   description: t.text(),
+  isGenerating: t.boolean().notNull().default(false),
   createdAt: t.timestamp().notNull().defaultNow(),
   updatedAt: t.timestamp().notNull().defaultNow(),
 }));

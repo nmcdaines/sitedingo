@@ -39,6 +39,7 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
         id: t.Number(),
         name: t.String(),
         description: t.Nullable(t.String()),
+        isGenerating: t.Boolean(),
   
         sitemaps: t.Array(t.Object({
           id: t.Number(),
@@ -95,22 +96,36 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
 
       name: body.name,
       description: body.description,
+      isGenerating: true,
     }).returning().then(res => res[0]);
 
     if (!project) { throw new Error('Not created!'); }
 
-    await generateSitemapWorkflow(project.id);
+    // Kick off workflow in background (don't await)
+    generateSitemapWorkflow(project.id).catch((error) => {
+      console.error('Error in generateSitemapWorkflow:', error);
+      // Optionally update project to mark as failed
+    });
 
     return {
       id: project.id,
       name: project.name,
       description: project.description,
+      isGenerating: project.isGenerating,
     }
   }, {
     body: t.Object({
       name: t.String(),
       description: t.String(),
     }),
+    response: {
+      200: t.Object({
+        id: t.Number(),
+        name: t.String(),
+        description: t.Nullable(t.String()),
+        isGenerating: t.Boolean(),
+      })
+    }
   })
 
   // Edit a project

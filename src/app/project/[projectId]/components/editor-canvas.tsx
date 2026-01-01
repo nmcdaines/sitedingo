@@ -46,30 +46,35 @@ interface EditorCanvasProps {
 }
 
 export function EditorCanvas({ project, sitemap, zoom, onZoomChange, onSaveStatusChange, onPageSelect, onSectionSelect, selectedPageId, onUndo, onRedo, canUndo, canRedo, onDragStateChange }: EditorCanvasProps) {
+  // Handle empty sitemap gracefully (during generation)
+  const pages = sitemap?.pages || [];
+  
   return (
     <div className="flex-1 overflow-hidden bg-[#f5f5f0] relative">
-      <SitemapDiagramProvider
-        initialPages={sitemap.pages}
-        sitemapId={sitemap.id}
-        onSaveStatusChange={onSaveStatusChange}
-        onPageSelect={onPageSelect}
-      >
-        <SitemapDiagram 
-          pages={sitemap.pages} 
-          zoom={zoom} 
-          onZoomChange={onZoomChange}
+      {sitemap ? (
+        <SitemapDiagramProvider
+          initialPages={pages}
           sitemapId={sitemap.id}
           onSaveStatusChange={onSaveStatusChange}
           onPageSelect={onPageSelect}
-          onSectionSelect={onSectionSelect}
-          selectedPageId={selectedPageId}
-          onUndo={onUndo}
-          onRedo={onRedo}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onDragStateChange={onDragStateChange}
-        />
-      </SitemapDiagramProvider>
+        >
+          <SitemapDiagram 
+            pages={pages} 
+            zoom={zoom} 
+            onZoomChange={onZoomChange}
+            sitemapId={sitemap.id}
+            onSaveStatusChange={onSaveStatusChange}
+            onPageSelect={onPageSelect}
+            onSectionSelect={onSectionSelect}
+            selectedPageId={selectedPageId}
+            onUndo={onUndo}
+            onRedo={onRedo}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onDragStateChange={onDragStateChange}
+          />
+        </SitemapDiagramProvider>
+      ) : null}
     </div>
   );
 }

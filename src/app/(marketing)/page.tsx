@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { client } from "@/lib/client";
@@ -9,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   return (
     <form
@@ -21,7 +23,9 @@ export default function Home() {
             name: formData.get('name') as string,
             description: formData.get('description') as string,
           });
-          window.location.href = `/project/${project.data?.id || ''}`;
+          if (project.data?.id) {
+            router.push(`/project/${project.data.id}`);
+          }
         } catch (error) {
           setIsLoading(false);
           throw error;

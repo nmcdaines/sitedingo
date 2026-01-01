@@ -23,7 +23,7 @@ Please generate complete, detailed content for this page.
 
   try {
     const result = await generateObject({
-      model: systemPrompt.metadata.model || 'google/gemini-2.5-pro',
+      model: 'google/gemini-2.5-flash-lite', // systemPrompt.metadata.model || 'google/gemini-2.5-pro',
       system: systemPrompt.content,
       prompt: userPrompt,
       schema: pageSchema,

@@ -1,5 +1,6 @@
 import { db, schema } from "@/db"
 import { generateAiSitemap, generateAiPage } from "../prompts";
+import { eq } from "drizzle-orm";
 
 export async function generateSitemapWorkflow(projectId: number) {
   'use workflow'
@@ -14,9 +15,19 @@ export async function generateSitemapWorkflow(projectId: number) {
 
   if (!project.description) throw new Error(`Project with ID ${projectId} has no description`);
 
-  const sitemap = await populateSitemap(project.id, project.description);
+  try {
+    const sitemap = await populateSitemap(project.id, project.description);
 
-  console.log(`done`);
+    console.log(`done`);
+  } finally {
+    // Always mark generation as complete, even if there was an error
+    await db.update(schema.projects)
+      .set({ 
+        isGenerating: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.projects.id, projectId));
+  }
 }
 
 async function populateSitemap(projectId: number, projectDescription: string) {

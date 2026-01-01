@@ -12,28 +12,141 @@ import { PropertyPanel } from "./components/property-panel";
 import { Spinner } from "@/components/ui/spinner";
 
 function useGetProjectQuery(projectId: string) {
-  const query = useQuery({
-    queryKey: ['projects', projectId],
-    queryFn: async () => {
-      const res = await client.api.projects({ id: projectId }).get();
-      // Check if response contains an error
-      if (res.data && typeof res.data === 'object' && 'error' in res.data) {
-        const errorMessage = (res.data as { error?: string }).error || 'Project not found';
-        throw new Error(errorMessage);
+  const [projectData, setProjectData] = React.useState<any>(null);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [error, setError] = React.useState<Error | null>(null);
+  const abortControllerRef = React.useRef<AbortController | null>(null);
+
+  React.useEffect(() => {
+    // First, fetch the initial project data
+    const fetchInitial = async () => {
+      try {
+        const res = await client.api.projects({ id: projectId }).get();
+        if (res.data && typeof res.data === 'object' && 'error' in res.data) {
+          const errorMessage = (res.data as { error?: string }).error || 'Project not found';
+          throw new Error(errorMessage);
+        }
+        if (!res.data) {
+          throw new Error('Project not found');
+        }
+        setProjectData(res.data);
+        setIsLoading(false);
+
+        // If project is generating, start streaming
+        if (res.data.isGenerating) {
+          startStreaming();
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('Failed to fetch project'));
+        setIsLoading(false);
       }
-      // Check if data is missing (which would indicate an error)
-      if (!res.data) {
-        throw new Error('Project not found');
+    };
+
+    const startStreaming = async () => {
+      // Cancel existing stream if any
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
-      return res.data;
-    },
-    // Poll every 2 seconds while the project is generating
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      return data?.isGenerating ? 2000 : false;
-    },
-  })
-  return [query.data, query] as const;
+
+      // Create new AbortController for this stream
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+
+      try {
+        const baseUrl = typeof window !== 'undefined' 
+          ? window.location.origin 
+          : 'http://localhost:3000';
+        const streamUrl = `${baseUrl}/api/projects/${projectId}/stream`;
+        
+        const response = await fetch(streamUrl, {
+          method: 'GET',
+          credentials: 'include',
+          signal: abortController.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`Stream failed: ${response.statusText}`);
+        }
+
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+
+        if (!reader) {
+          throw new Error('No reader available');
+        }
+
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) {
+            break;
+          }
+
+          // Decode the chunk and add to buffer
+          buffer += decoder.decode(value, { stream: true });
+
+          // Process complete SSE messages (lines ending with \n\n)
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop() || ''; // Keep incomplete message in buffer
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const jsonStr = line.slice(6); // Remove 'data: ' prefix
+                const data = JSON.parse(jsonStr);
+                
+                // Check for errors
+                if (data.error) {
+                  setError(new Error(data.error));
+                  abortController.abort();
+                  return;
+                }
+
+                // Update project data
+                setProjectData(data);
+
+                // If generation is complete, close the stream
+                if (!data.isGenerating) {
+                  abortController.abort();
+                  return;
+                }
+              } catch (err) {
+                console.error('Error parsing stream data:', err);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        // Ignore abort errors (they're expected when we close the stream)
+        if (err instanceof Error && err.name !== 'AbortError') {
+          console.error('Stream error:', err);
+          // Don't set error state on connection close - it might be intentional
+        }
+      }
+    };
+
+    fetchInitial();
+
+    // Cleanup on unmount
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
+  }, [projectId]);
+
+  // Create a query-like object for compatibility
+  const query = {
+    data: projectData,
+    isLoading,
+    isError: error !== null,
+    error,
+  };
+
+  return [projectData, query] as const;
 }
 
 class ErrorBoundary extends React.Component<

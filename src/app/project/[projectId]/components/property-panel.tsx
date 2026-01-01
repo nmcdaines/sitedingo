@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { X, FileText, Link2, Trash2 } from "lucide-react";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { client } from '@/lib/client';
+import { useSitemapDiagram } from './sitemap-diagram/sitemap-diagram-context';
 
 interface Page {
   id: number;
@@ -52,6 +53,17 @@ export function PropertyPanel({ page, project, section, isOpen, isDragging = fal
     componentType: '',
   });
   const queryClient = useQueryClient();
+  
+  // Get updatePage function from context for optimistic updates
+  // Note: This will only work when PropertyPanel is within SitemapDiagramProvider
+  let updatePage: ((pageId: number, updates: { name?: string; slug?: string; description?: string | null }) => void) | null = null;
+  try {
+    const context = useSitemapDiagram();
+    updatePage = context.updatePage;
+  } catch {
+    // Not within provider, optimistic updates won't work
+    // This is fine - the mutation will still work and invalidate queries
+  }
 
   useEffect(() => {
     if (section) {
@@ -161,6 +173,14 @@ export function PropertyPanel({ page, project, section, isOpen, isDragging = fal
         componentType: formData.componentType,
       });
     } else if (page) {
+      // Optimistically update the sitemap before the API call
+      if (updatePage) {
+        updatePage(page.id, {
+          name: formData.name,
+          slug: formData.slug,
+          description: formData.description || null,
+        });
+      }
       await updatePageMutation.mutateAsync({
         name: formData.name,
         slug: formData.slug,

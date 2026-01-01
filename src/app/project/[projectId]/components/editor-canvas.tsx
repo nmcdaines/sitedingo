@@ -1,7 +1,6 @@
 'use client';
 
 import { SitemapDiagram } from "./sitemap-diagram/sitemap-diagram";
-import { SitemapDiagramProvider } from "./sitemap-diagram/sitemap-diagram-context";
 
 interface Project {
   id: number;
@@ -52,28 +51,21 @@ export function EditorCanvas({ project, sitemap, zoom, onZoomChange, onSaveStatu
   return (
     <div className="flex-1 overflow-hidden bg-[#f5f5f0] relative">
       {sitemap ? (
-        <SitemapDiagramProvider
-          initialPages={pages}
+        <SitemapDiagram 
+          pages={pages} 
+          zoom={zoom} 
+          onZoomChange={onZoomChange}
           sitemapId={sitemap.id}
           onSaveStatusChange={onSaveStatusChange}
           onPageSelect={onPageSelect}
-        >
-          <SitemapDiagram 
-            pages={pages} 
-            zoom={zoom} 
-            onZoomChange={onZoomChange}
-            sitemapId={sitemap.id}
-            onSaveStatusChange={onSaveStatusChange}
-            onPageSelect={onPageSelect}
-            onSectionSelect={onSectionSelect}
-            selectedPageId={selectedPageId}
-            onUndo={onUndo}
-            onRedo={onRedo}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            onDragStateChange={onDragStateChange}
-          />
-        </SitemapDiagramProvider>
+          onSectionSelect={onSectionSelect}
+          selectedPageId={selectedPageId}
+          onUndo={onUndo}
+          onRedo={onRedo}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          onDragStateChange={onDragStateChange}
+        />
       ) : null}
     </div>
   );

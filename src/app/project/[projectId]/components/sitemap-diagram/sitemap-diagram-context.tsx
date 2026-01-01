@@ -77,6 +77,7 @@ interface DataState {
 type DataAction =
   | { type: 'SET_PAGES'; payload: Page[] }
   | { type: 'UPDATE_PAGES'; payload: (pages: Page[]) => Page[] }
+  | { type: 'UPDATE_PAGE'; payload: { id: number; updates: Partial<Pick<Page, 'name' | 'slug' | 'description'>> } }
   | { type: 'ADD_PAGE_OPTIMISTIC'; payload: { page: Page; siblingsToShift: number[] } }
   | { type: 'REPLACE_TEMP_PAGE'; payload: { tempId: number; actualPage: Page } }
   | { type: 'ROLLBACK_ADD_PAGE'; payload: { tempId: number; siblingsToShift: number[] } }
@@ -101,6 +102,16 @@ function dataReducer(state: DataState, action: DataAction): DataState {
     
     case 'UPDATE_PAGES':
       return { ...state, pages: action.payload(state.pages) };
+    
+    case 'UPDATE_PAGE': {
+      const { id, updates } = action.payload;
+      return {
+        ...state,
+        pages: state.pages.map((p) =>
+          p.id === id ? { ...p, ...updates } : p
+        ),
+      };
+    }
     
     case 'ADD_PAGE_OPTIMISTIC': {
       const { page, siblingsToShift } = action.payload;
@@ -222,6 +233,7 @@ interface SitemapDiagramContextValue {
   moveSection: (event: DragEndEvent) => Promise<void>;
   deletePage: (pageId: number) => Promise<void>;
   duplicatePage: (page: Page) => Promise<void>;
+  updatePage: (pageId: number, updates: { name?: string; slug?: string; description?: string | null }) => void;
   updateSection: (sectionId: number, updates: { name?: string | null; componentType?: string; metadata?: any }) => Promise<void>;
   undo: () => void;
   redo: () => void;
@@ -333,6 +345,11 @@ export function SitemapDiagramProvider({
   // Update pages helper
   const updatePages = useCallback((updater: (pages: Page[]) => Page[]) => {
     dataDispatch({ type: 'UPDATE_PAGES', payload: updater });
+  }, []);
+
+  // Update single page helper (for optimistic updates)
+  const updatePage = useCallback((pageId: number, updates: { name?: string; slug?: string; description?: string | null }) => {
+    dataDispatch({ type: 'UPDATE_PAGE', payload: { id: pageId, updates } });
   }, []);
 
   // Auto-save mutation
@@ -1040,6 +1057,7 @@ export function SitemapDiagramProvider({
     moveSection,
     deletePage,
     duplicatePage,
+    updatePage,
     updateSection,
     undo,
     redo,

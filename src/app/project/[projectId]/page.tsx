@@ -10,6 +10,7 @@ import { EditorCanvas } from "./components/editor-canvas";
 import { EditorFooter } from "./components/editor-footer";
 import { PropertyPanel } from "./components/property-panel";
 import { Spinner } from "@/components/ui/spinner";
+import { SitemapDiagramProvider } from "./components/sitemap-diagram/sitemap-diagram-context";
 
 function useGetProjectQuery(projectId: string) {
   const [projectData, setProjectData] = React.useState<any>(null);
@@ -362,21 +363,41 @@ function EditorContent({ projectId }: { projectId: string }) {
           onTogglePropertyPanel={handleTogglePropertyPanel}
         />
         {sitemap ? (
-          <EditorCanvas 
-            project={project} 
-            sitemap={sitemap} 
-            zoom={zoom} 
-            onZoomChange={setZoom}
+          <SitemapDiagramProvider
+            initialPages={sitemap.pages || []}
+            sitemapId={sitemap.id}
             onSaveStatusChange={setSaveStatus}
             onPageSelect={handlePageSelect}
-            onSectionSelect={handleSectionSelect}
-            selectedPageId={selectedPage?.id}
-            onUndo={() => setCanUndo(false)}
-            onRedo={() => setCanRedo(false)}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            onDragStateChange={setIsDragging}
-          />
+          >
+            <EditorCanvas 
+              project={project} 
+              sitemap={sitemap} 
+              zoom={zoom} 
+              onZoomChange={setZoom}
+              onSaveStatusChange={setSaveStatus}
+              onPageSelect={handlePageSelect}
+              onSectionSelect={handleSectionSelect}
+              selectedPageId={selectedPage?.id}
+              onUndo={() => setCanUndo(false)}
+              onRedo={() => setCanRedo(false)}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onDragStateChange={setIsDragging}
+            />
+            <PropertyPanel
+              page={selectedPage}
+              project={project}
+              section={selectedSection}
+              isOpen={isPropertyPanelOpen}
+              isDragging={isDragging}
+              onClose={() => {
+                setIsPropertyPanelOpen(false);
+                setSelectedPage(null);
+                setSelectedSection(null);
+              }}
+              onDelete={selectedSection ? handleSectionDelete : handlePageDelete}
+            />
+          </SitemapDiagramProvider>
         ) : (
           <div className="flex-1 flex items-center justify-center bg-[#f5f5f0]">
             <div className="text-center space-y-4">
@@ -390,19 +411,6 @@ function EditorContent({ projectId }: { projectId: string }) {
             </div>
           </div>
         )}
-        <PropertyPanel
-          page={selectedPage}
-          project={project}
-          section={selectedSection}
-          isOpen={isPropertyPanelOpen}
-          isDragging={isDragging}
-          onClose={() => {
-            setIsPropertyPanelOpen(false);
-            setSelectedPage(null);
-            setSelectedSection(null);
-          }}
-          onDelete={selectedSection ? handleSectionDelete : handlePageDelete}
-        />
       </div>
       <EditorFooter 
         zoom={zoom} 

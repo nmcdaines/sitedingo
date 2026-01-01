@@ -1,22 +1,19 @@
 'use client';
 
 import React from 'react';
-import { PlusIcon } from 'lucide-react';
 import { TreeNode } from '../../lib/tree-utils';
 import { PageNode } from './page-node';
 import { EmptySpaceDropZone } from './empty-space-drop-zone';
-import { useSitemapDiagram } from './sitemap-diagram-context';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
+import { useSitemapDiagram, Page } from './sitemap-diagram-context';
 
 interface PageTreeNodeProps {
   node: TreeNode;
   selectedNodeId: number | null;
-  onPageSelect?: (page: any) => void;
-  onPageEdit?: (page: any) => void;
-  onPageDelete?: (page: any) => void;
-  onPageDuplicate?: (page: any) => void;
-  onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: any; sortOrder: number; pageId?: number } | null) => void;
+  onPageSelect?: (page: Page | null) => void;
+  onPageEdit?: (page: Page | null) => void;
+  onPageDelete?: (page: Page | null) => void;
+  onPageDuplicate?: (page: Page | null) => void;
+  onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number; pageId?: number } | null) => void;
   children?: React.ReactNode;
 }
 
@@ -103,20 +100,10 @@ export function PageTreeNode({
   onSectionSelect,
   children,
 }: PageTreeNodeProps) {
-  const { pages, activeId, showSections, addPage } = useSitemapDiagram();
+  const { pages, activeId, showSections } = useSitemapDiagram();
   const pageData = pages.find(p => p.id === node.id);
   const sortedChildren = [...node.children].sort((a, b) => a.sortOrder - b.sortOrder);
   const canHaveChildren = true; // Allow all pages to have children
-
-  // Handle adding a new child page
-  const handleAddChildPage = async () => {
-    if (!pageData) {
-      console.error('Missing page data for node:', node.id);
-      return;
-    }
-
-    await addPage(node.id, 0);
-  };
 
   // Base case: render a single page node
   if (sortedChildren.length === 0) {

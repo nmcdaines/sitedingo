@@ -29,7 +29,7 @@ interface Section {
   id: number;
   componentType: string;
   name: string | null;
-  metadata: any;
+  metadata: Record<string, unknown>;
   sortOrder: number;
   pageId?: number;
 }

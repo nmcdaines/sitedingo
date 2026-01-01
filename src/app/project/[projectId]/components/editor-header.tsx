@@ -2,13 +2,12 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Gift, Share2, Download, Sparkles } from "lucide-react";
+import { ArrowLeft, Share2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { client } from "@/lib/client";
 import { useAutoSave } from "../hooks/use-auto-save";
-import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 
 interface Project {
@@ -28,11 +27,18 @@ export function EditorHeader({ project }: EditorHeaderProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [projectName, setProjectName] = useState(project.name);
   const inputRef = useRef<HTMLInputElement>(null);
+  const prevProjectNameRef = useRef(project.name);
   
-  // Update local state when project prop changes
+  // Update local state when project prop changes (only if not editing)
+  // Use setTimeout to avoid synchronous setState in effect
   useEffect(() => {
-    setProjectName(project.name);
-  }, [project.name]);
+    if (!isEditing && prevProjectNameRef.current !== project.name) {
+      prevProjectNameRef.current = project.name;
+      setTimeout(() => {
+        setProjectName(project.name);
+      }, 0);
+    }
+  }, [project.name, isEditing]);
 
   // Focus input when entering edit mode
   useEffect(() => {
@@ -43,7 +49,7 @@ export function EditorHeader({ project }: EditorHeaderProps) {
   }, [isEditing]);
 
   // Auto-save project name
-  const saveStatus = useAutoSave(
+  useAutoSave(
     projectName,
     async (name: string) => {
       await client.api.projects({ id: projectId }).put({

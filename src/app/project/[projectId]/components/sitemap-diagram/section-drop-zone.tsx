@@ -11,7 +11,7 @@ interface SectionDropZoneProps {
   isVisible?: boolean;
 }
 
-export function SectionDropZone({ id, pageId, position, isVisible = false }: SectionDropZoneProps) {
+export function SectionDropZone({ id, pageId, position }: SectionDropZoneProps) {
   const { setNodeRef, isOver, active } = useDroppable({
     id,
     data: {

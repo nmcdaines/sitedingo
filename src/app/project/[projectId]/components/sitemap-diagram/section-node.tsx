@@ -10,7 +10,7 @@ interface Section {
   id: number;
   componentType: string;
   name: string | null;
-  metadata: any;
+  metadata: Record<string, unknown>;
   sortOrder: number;
 }
 
@@ -28,10 +28,18 @@ function SectionNodeComponent({ section, pageId, isDragging, isSelected, onSelec
   const [editValue, setEditValue] = useState(section.name || '');
   const inputRef = useRef<HTMLInputElement>(null);
   const isSelectedValue = isSelected !== undefined ? isSelected : activeSectionId === `section-${section.id}`;
+  const prevSectionNameRef = useRef(section.name);
 
+  // Update edit value when section name changes (only if not currently editing)
+  // Use setTimeout to avoid synchronous setState in effect
   useEffect(() => {
-    setEditValue(section.name || '');
-  }, [section.name]);
+    if (!isEditing && prevSectionNameRef.current !== section.name) {
+      prevSectionNameRef.current = section.name;
+      setTimeout(() => {
+        setEditValue(section.name || '');
+      }, 0);
+    }
+  }, [section.name, isEditing]);
 
   useEffect(() => {
     if (isEditing && inputRef.current) {

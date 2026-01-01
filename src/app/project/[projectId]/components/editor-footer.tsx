@@ -1,17 +1,14 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { HelpCircle, ZoomIn, ZoomOut, Maximize2, ChevronDown } from "lucide-react";
+import { HelpCircle, ChevronDown } from "lucide-react";
 
 interface EditorFooterProps {
   zoom?: number;
-  onZoomIn?: () => void;
-  onZoomOut?: () => void;
-  onZoomFit?: () => void;
   saveStatus?: 'idle' | 'saving' | 'saved' | 'error';
 }
 
-export function EditorFooter({ zoom = 0.7, onZoomIn, onZoomOut, onZoomFit, saveStatus }: EditorFooterProps) {
+export function EditorFooter({ zoom = 0.7, saveStatus }: EditorFooterProps) {
   const zoomPercent = Math.round(zoom * 100);
   
   const getSaveStatusText = () => {

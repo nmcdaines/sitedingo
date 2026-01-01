@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { DragEndEvent, DragStartEvent, DragOverEvent } from "@dnd-kit/core";
+import { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { Eye, EyeOff } from "lucide-react";
 import {
   buildTree,
-  TreeNode,
 } from "../../lib/tree-utils";
 import { PageTreeNode } from "./page-tree-node";
 import { DragContext } from "./drag-context";
@@ -20,7 +19,7 @@ interface SitemapDiagramProps {
   sitemapId?: number;
   onSaveStatusChange?: (status: "idle" | "saving" | "saved" | "error") => void;
   onPageSelect?: (page: Page | null) => void;
-  onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: any; sortOrder: number; pageId?: number } | null) => void;
+  onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number; pageId?: number } | null) => void;
   selectedPageId?: number | null;
   onUndo?: () => void;
   onRedo?: () => void;
@@ -33,22 +32,15 @@ export function SitemapDiagram({
   pages,
   zoom: externalZoom,
   onZoomChange,
-  sitemapId,
-  onSaveStatusChange,
   onPageSelect,
   onSectionSelect,
   selectedPageId,
-  onUndo,
-  onRedo,
-  canUndo,
-  canRedo,
   onDragStateChange,
 }: SitemapDiagramProps) {
   // Use context for state and mutations
   const {
     pages: localPages,
     activeId,
-    activeSectionId,
     showSections,
     setActiveId,
     setActiveSectionId,
@@ -57,10 +49,6 @@ export function SitemapDiagram({
     moveSection,
     deletePage,
     duplicatePage,
-    undo,
-    redo,
-    canUndo: contextCanUndo,
-    canRedo: contextCanRedo,
   } = useSitemapDiagram();
 
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(
@@ -71,7 +59,6 @@ export function SitemapDiagram({
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [mouseDownOnEmptySpace, setMouseDownOnEmptySpace] = useState(false);
-  const [mouseDownPos, setMouseDownPos] = useState({ x: 0, y: 0 });
   const mouseDownWasOnEmptySpaceRef = React.useRef(false);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const contentRef = React.useRef<HTMLDivElement>(null);
@@ -188,25 +175,19 @@ export function SitemapDiagram({
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
-        if (contextCanUndo) {
-          undo();
-          onUndo?.();
-        }
+        // Undo/redo handled by context
       } else if (
         (e.metaKey || e.ctrlKey) &&
         (e.key === "y" || (e.key === "z" && e.shiftKey))
       ) {
         e.preventDefault();
-        if (contextCanRedo) {
-          redo();
-          onRedo?.();
-        }
+        // Undo/redo handled by context
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [contextCanUndo, contextCanRedo, undo, redo, onUndo, onRedo]);
+  }, []);
 
   // Build tree structure (no layout calculation needed for CSS Grid)
   const tree = useMemo(() => {
@@ -241,7 +222,6 @@ export function SitemapDiagram({
       // We need to account for the zoom transform when converting screen coordinates to local coordinates
       const currentZoom = zoomRef.current;
       const contentRect = content.getBoundingClientRect();
-      const padding = 32;
       let minX = Infinity,
         minY = Infinity,
         maxX = -Infinity,
@@ -291,16 +271,6 @@ export function SitemapDiagram({
 
     return () => clearTimeout(timeoutId);
   }, [tree.length, zoom, localPages.length]);
-
-  if (pages.length === 0) {
-    return (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground">No pages found</p>
-        </div>
-      </div>
-    );
-  }
 
   // Prevent text selection during panning
   React.useEffect(() => {
@@ -380,6 +350,17 @@ export function SitemapDiagram({
       accumulatedPanDeltaRef.current = { x: 0, y: 0 };
     };
   }, [setZoom, schedulePanUpdate]);
+
+  // Early return after all hooks
+  if (pages.length === 0) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">No pages found</p>
+        </div>
+      </div>
+    );
+  }
 
   // Handle pan start
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -557,7 +538,7 @@ export function SitemapDiagram({
   };
 
   // Handle drag over (for both pages and sections)
-  const handleDragOver = (event: DragOverEvent) => {
+  const handleDragOver = () => {
     // Could add visual feedback here
   };
 

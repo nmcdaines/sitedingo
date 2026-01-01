@@ -35,7 +35,7 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
         let timeoutId: NodeJS.Timeout | null = null;
 
         // Helper to send data
-        const send = (data: any) => {
+        const send = (data: unknown) => {
           if (isClosed) return;
           try {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
@@ -55,7 +55,7 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
           }
           try {
             controller.close();
-          } catch (error) {
+          } catch {
             // Stream may already be closed
           }
         };
@@ -120,8 +120,7 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
                 cleanup();
               });
             }, POLL_INTERVAL);
-          } catch (error) {
-            console.error('Error fetching project:', error);
+          } catch {
             send({ error: 'Error fetching project status' });
             cleanup();
           }

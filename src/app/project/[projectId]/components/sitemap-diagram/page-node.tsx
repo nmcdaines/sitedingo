@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useDraggable, useDroppable, DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { Home, Info, Folder, Phone, FileText, PlusIcon, StarsIcon, ShoppingCart, Users, Settings, Mail, Calendar, Image, Music, Video, Book, Map, Heart, Star, Search, Bell, Camera, Gift, Coffee, Gamepad2, Laptop, Smartphone, Globe, Lock, Unlock, Eye, Download, Upload, Share } from "lucide-react";
 import { TreeNode } from "../../lib/tree-utils";
 import { ContextMenu } from "../context-menu";
@@ -20,7 +20,7 @@ interface PageNodeProps {
   onDelete?: () => void;
   onDuplicate?: () => void;
   showSections?: boolean;
-  onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: any; sortOrder: number; pageId?: number } | null) => void;
+  onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number; pageId?: number } | null) => void;
   children?: React.ReactNode;
   dropZone?: React.ReactNode;
 }
@@ -64,7 +64,7 @@ const pageIcons: Record<string, typeof Home> = {
   default: FileText,
 };
 
-export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDelete, onDuplicate, showSections = true, onSectionSelect, children, dropZone }: PageNodeProps) {
+export function PageNode({ node, onClick, isDragging, onEdit, onDelete, onDuplicate, showSections = true, onSectionSelect, children, dropZone }: PageNodeProps) {
   const contextMenuRef = React.useRef<HTMLDivElement>(null);
   const { pages, activeId, activeSectionId, showSections: contextShowSections, addPage, addSection } = useSitemapDiagram();
 
@@ -111,7 +111,6 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
 
   const {
     setNodeRef: setDroppableRef,
-    isOver: isPageOver,
   } = useDroppable({
     id: `drop-page-${node.id}`,
     data: {
@@ -124,7 +123,6 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
   // Also make the sections container a drop zone for sections (fallback to append at end)
   const {
     setNodeRef: setSectionContainerRef,
-    isOver: isSectionOver,
   } = useDroppable({
     id: `drop-section-page-${node.id}`,
     data: {

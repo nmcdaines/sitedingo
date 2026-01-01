@@ -2,9 +2,9 @@
 
 import React, { createContext, useContext, useReducer, useCallback, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
+import { DragEndEvent } from '@dnd-kit/core';
 import { client } from '@/lib/client';
-import { getSiblings, calculateSortOrder } from '../../lib/tree-utils';
+import { getSiblings, calculateSortOrder, TreeNode } from '../../lib/tree-utils';
 
 export interface Page {
   id: number;
@@ -18,7 +18,7 @@ export interface Page {
     id: number;
     componentType: string;
     name: string | null;
-    metadata: any;
+    metadata: Record<string, unknown>;
     sortOrder: number;
   }>;
 }
@@ -235,7 +235,7 @@ interface SitemapDiagramContextValue {
   deletePage: (pageId: number) => Promise<void>;
   duplicatePage: (page: Page) => Promise<void>;
   updatePage: (pageId: number, updates: { name?: string; slug?: string; description?: string | null }) => void;
-  updateSection: (sectionId: number, updates: { name?: string | null; componentType?: string; metadata?: any }) => Promise<void>;
+  updateSection: (sectionId: number, updates: { name?: string | null; componentType?: string; metadata?: Record<string, unknown> }) => Promise<void>;
   undo: () => void;
   redo: () => void;
   
@@ -445,7 +445,7 @@ export function SitemapDiagramProvider({
         setTimeout(() => {
           setSaveStatus('idle');
         }, 2000);
-      } catch (error) {
+      } catch {
         setSaveStatus('error');
         setTimeout(() => {
           setSaveStatus('idle');
@@ -531,7 +531,7 @@ export function SitemapDiagramProvider({
       );
 
       // Replace optimistic page with real page
-      const actualPage = (newPage as any).data || newPage;
+      const actualPage = (newPage as { data?: Page } | Page).data || newPage;
 
       dataDispatch({
         type: 'REPLACE_TEMP_PAGE',
@@ -581,7 +581,7 @@ export function SitemapDiagramProvider({
       return;
     }
 
-    const draggedNode = activeData.node as any;
+    const draggedNode = activeData.node as TreeNode;
     const overId = over.id as string;
 
     let updatedPages: Page[] = dataState.pages;
@@ -599,9 +599,9 @@ export function SitemapDiagramProvider({
         return;
       }
 
-      function isDescendant(node: any, targetId: number): boolean {
+      function isDescendant(node: TreeNode, targetId: number): boolean {
         if (node.id === targetId) return true;
-        return node.children?.some((child: any) => isDescendant(child, targetId)) || false;
+        return node.children?.some((child) => isDescendant(child, targetId)) || false;
       }
       if (isDescendant(draggedNode, newParentId)) {
         return;
@@ -724,7 +724,7 @@ export function SitemapDiagramProvider({
       id: number;
       componentType: string;
       name: string | null;
-      metadata: any;
+      metadata: Record<string, unknown>;
       sortOrder: number;
     };
     const sourcePageId = activeData.pageId as number;
@@ -896,7 +896,7 @@ export function SitemapDiagramProvider({
     if (!sitemapId) return;
 
     try {
-      const newPage = await client.api.pages.post({
+      await client.api.pages.post({
         sitemapId: sitemapId,
         parentId: page.parentId,
         name: `${page.name} (Copy)`,
@@ -932,7 +932,7 @@ export function SitemapDiagramProvider({
         sortOrder: targetPosition,
       });
 
-      const actualSection = (newSection as any).data || newSection;
+      const actualSection = (newSection as { data?: { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number } } | { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number }).data || newSection;
 
       // Update local state optimistically
       const updatedPages = dataState.pages.map((p) => {
@@ -988,7 +988,7 @@ export function SitemapDiagramProvider({
   // Update section mutation
   const updateSection = useCallback(async (
     sectionId: number,
-    updates: { name?: string | null; componentType?: string; metadata?: any }
+    updates: { name?: string | null; componentType?: string; metadata?: Record<string, unknown> }
   ) => {
     try {
       const page = dataState.pages.find((p) =>
@@ -1013,7 +1013,7 @@ export function SitemapDiagramProvider({
         pageId: page.id,
       });
 
-      const actualSection = (updatedSection as any).data || updatedSection;
+      const actualSection = (updatedSection as { data?: { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number } } | { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number }).data || updatedSection;
 
       // Update local state
       const updatedPages = dataState.pages.map((p) => {

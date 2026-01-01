@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { useParams } from 'next/navigation'
-import { useQuery } from "@tanstack/react-query";
 import { client } from "@/lib/client";
 import { EditorHeader } from "./components/editor-header";
 import { EditorSidebar } from "./components/editor-sidebar";
@@ -12,8 +11,35 @@ import { PropertyPanel } from "./components/property-panel";
 import { Spinner } from "@/components/ui/spinner";
 import { SitemapDiagramProvider } from "./components/sitemap-diagram/sitemap-diagram-context";
 
+interface ProjectData {
+  id: number;
+  name: string;
+  description: string | null;
+  isGenerating: boolean;
+  sitemaps?: Array<{
+    id: number;
+    name: string;
+    description: string | null;
+    pages: Array<{
+      id: number;
+      name: string;
+      slug: string;
+      description: string | null;
+      sortOrder: number;
+      parentId: number | null;
+      sections: Array<{
+        id: number;
+        componentType: string;
+        name: string | null;
+        metadata: Record<string, unknown>;
+        sortOrder: number;
+      }>;
+    }>;
+  }>;
+}
+
 function useGetProjectQuery(projectId: string) {
-  const [projectData, setProjectData] = React.useState<any>(null);
+  const [projectData, setProjectData] = React.useState<ProjectData | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [error, setError] = React.useState<Error | null>(null);
   const abortControllerRef = React.useRef<AbortController | null>(null);
@@ -186,7 +212,7 @@ export default function EditorPage() {
           <div className="h-screen flex items-center justify-center">
             <div className="text-center">
               <p className="text-lg font-semibold mb-2">Project not found</p>
-              <p className="text-sm text-muted-foreground">The project you're looking for doesn't exist or you don't have access to it.</p>
+              <p className="text-sm text-muted-foreground">The project you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.</p>
             </div>
           </div>
         }
@@ -202,7 +228,7 @@ function EditorContent({ projectId }: { projectId: string }) {
   const [zoom, setZoom] = React.useState(0.7);
   const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [selectedPage, setSelectedPage] = React.useState<{ id: number; name: string; slug: string; description: string | null; sortOrder: number; parentId: number | null } | null>(null);
-  const [selectedSection, setSelectedSection] = React.useState<{ id: number; componentType: string; name: string | null; metadata: any; sortOrder: number; pageId?: number } | null>(null);
+  const [selectedSection, setSelectedSection] = React.useState<{ id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number; pageId?: number } | null>(null);
   const [isPropertyPanelOpen, setIsPropertyPanelOpen] = React.useState(false);
   const [canUndo, setCanUndo] = React.useState(false);
   const [canRedo, setCanRedo] = React.useState(false);
@@ -230,7 +256,7 @@ function EditorContent({ projectId }: { projectId: string }) {
 
     // Update the ref for next comparison
     prevIsGeneratingRef.current = currentIsGenerating;
-  }, [project?.isGenerating]);
+  }, [project]);
   
   // Handle loading state
   if (query.isLoading) {
@@ -248,7 +274,7 @@ function EditorContent({ projectId }: { projectId: string }) {
         <div className="text-center">
           <p className="text-lg font-semibold mb-2">Project not found</p>
           <p className="text-sm text-muted-foreground">
-            {query.error instanceof Error ? query.error.message : 'The project you\'re looking for doesn\'t exist or you don\'t have access to it.'}
+            {query.error instanceof Error ? query.error.message : 'The project you&apos;re looking for doesn&apos;t exist or you don&apos;t have access to it.'}
           </p>
         </div>
       </div>

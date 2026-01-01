@@ -21,7 +21,7 @@ interface Project {
         id: number;
         componentType: string;
         name: string | null;
-        metadata: any;
+        metadata: Record<string, unknown>;
         sortOrder: number;
       }>;
     }>;
@@ -35,7 +35,7 @@ interface EditorCanvasProps {
   onZoomChange: (zoom: number) => void;
   onSaveStatusChange?: (status: 'idle' | 'saving' | 'saved' | 'error') => void;
   onPageSelect?: (page: { id: number; name: string; slug: string; description: string | null; sortOrder: number; parentId: number | null } | null) => void;
-  onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: any; sortOrder: number; pageId?: number } | null) => void;
+  onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number; pageId?: number } | null) => void;
   selectedPageId?: number | null;
   onUndo?: () => void;
   onRedo?: () => void;
@@ -44,7 +44,7 @@ interface EditorCanvasProps {
   onDragStateChange?: (isDragging: boolean) => void;
 }
 
-export function EditorCanvas({ project, sitemap, zoom, onZoomChange, onSaveStatusChange, onPageSelect, onSectionSelect, selectedPageId, onUndo, onRedo, canUndo, canRedo, onDragStateChange }: EditorCanvasProps) {
+export function EditorCanvas({ sitemap, zoom, onZoomChange, onSaveStatusChange, onPageSelect, onSectionSelect, selectedPageId, onUndo, onRedo, canUndo, canRedo, onDragStateChange }: EditorCanvasProps) {
   // Handle empty sitemap gracefully (during generation)
   const pages = sitemap?.pages || [];
   

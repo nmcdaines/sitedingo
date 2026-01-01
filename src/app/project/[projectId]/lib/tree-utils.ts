@@ -10,7 +10,7 @@ interface Page {
     id: number;
     componentType: string;
     name: string | null;
-    metadata: any;
+    metadata: Record<string, unknown>;
     sortOrder: number;
   }>;
 }
@@ -69,82 +69,9 @@ export function buildTree(pages: Page[]): TreeNode[] {
   return rootNodes;
 }
 
-/**
- * Layout constants
- */
-const LAYOUT = {
-  NODE_WIDTH: 280,
-  NODE_HEIGHT: 120,
-  SECTION_HEIGHT: 80,
-  HORIZONTAL_SPACING: 320,
-  VERTICAL_SPACING: 200,
-  SECTION_SPACING: 100,
-  CANVAS_PADDING: 100,
-} as const;
+// Layout constants removed - not used in current CSS Grid implementation
 
-/**
- * Calculates the width needed for a subtree
- */
-function calculateSubtreeWidth(node: TreeNode): number {
-  if (node.children.length === 0) {
-    return LAYOUT.NODE_WIDTH;
-  }
-
-  const childrenWidth = node.children.reduce((sum, child) => {
-    return sum + calculateSubtreeWidth(child) + LAYOUT.HORIZONTAL_SPACING;
-  }, -LAYOUT.HORIZONTAL_SPACING); // Remove last spacing
-
-  return Math.max(LAYOUT.NODE_WIDTH, childrenWidth);
-}
-
-/**
- * Calculates the height needed for a node including sections
- * Matches the calculation in page-node.tsx:
- * - Header: 60px
- * - Each section: 50px
- * - Gap between sections: 8px
- * - mt-4 margin: 16px
- */
-function calculateNodeHeight(node: TreeNode): number {
-  const headerHeight = 60;
-  const sectionAreaHeight =
-    node.sections.length > 0
-      ? node.sections.length * 50 + (node.sections.length - 1) * 8 + 16
-      : 0;
-  return headerHeight + sectionAreaHeight;
-}
-
-/**
- * Positions a node and its children recursively
- */
-function positionNode(
-  node: TreeNode,
-  startX: number,
-  y: number,
-  level: number,
-): void {
-  const nodeHeight = calculateNodeHeight(node);
-  const subtreeWidth = calculateSubtreeWidth(node);
-
-  // Center the node above its children
-  const nodeX = startX + (subtreeWidth - LAYOUT.NODE_WIDTH) / 2;
-
-  node.position = { x: nodeX, y };
-  node.width = LAYOUT.NODE_WIDTH;
-  node.height = nodeHeight;
-
-  // Position children
-  if (node.children.length > 0) {
-    const childY = y + nodeHeight + LAYOUT.VERTICAL_SPACING;
-    let childX = startX;
-
-    node.children.forEach((child) => {
-      const childSubtreeWidth = calculateSubtreeWidth(child);
-      positionNode(child, childX, childY, level + 1);
-      childX += childSubtreeWidth + LAYOUT.HORIZONTAL_SPACING;
-    });
-  }
-}
+// Layout calculation functions removed - not used in current CSS Grid implementation
 
 /**
  * Gets all siblings of a page (pages with the same parentId)

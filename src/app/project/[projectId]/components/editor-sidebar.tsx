@@ -4,15 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Edit, Plus } from "lucide-react";
 
 interface EditorSidebarProps {
-  onUndo?: () => void;
-  onRedo?: () => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
   isPropertyPanelOpen?: boolean;
   onTogglePropertyPanel?: () => void;
 }
 
-export function EditorSidebar({ onUndo, onRedo, canUndo, canRedo, isPropertyPanelOpen, onTogglePropertyPanel }: EditorSidebarProps) {
+export function EditorSidebar({ isPropertyPanelOpen, onTogglePropertyPanel }: EditorSidebarProps) {
   return (
     <aside className="absolute left-4 top-4 z-40 flex flex-col gap-2">
       {/* Floating Edit button */}

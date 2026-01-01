@@ -48,11 +48,10 @@ export function useAutoSave<T>(
       clearTimeout(timeoutRef.current);
     }
 
-    // Set status to saving after debounce
-    setStatus('saving');
-
     // Set new timeout
     timeoutRef.current = setTimeout(async () => {
+      // Set status to saving after debounce
+      setStatus('saving');
       try {
         await saveFnRef.current(dataRef.current);
         setStatus('saved');

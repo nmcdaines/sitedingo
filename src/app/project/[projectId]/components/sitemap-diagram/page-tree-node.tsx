@@ -114,7 +114,7 @@ export function PageTreeNode({
       console.error('Missing page data for node:', node.id);
       return;
     }
-    
+
     await addPage(node.id, 0);
   };
 
@@ -144,7 +144,7 @@ export function PageTreeNode({
 
         {/* Add child page button - appears on hover below leaf nodes */}
         <div className={cn('mt-2 hidden z-10', !activeId && 'group-hover:block')}>
-          <Button 
+          <Button
             variant="outline"
             className='add-button'
             onClick={(e) => {
@@ -168,7 +168,7 @@ export function PageTreeNode({
 
   // Render parent with children
   return (
-    <div className="flex flex-col items-center pointer-events-none" style={{ width: 'max-content', minWidth: '280px', overflow: 'visible' }}>
+    <div className="flex flex-col items-center pointer-events-none">
       {/* Parent node */}
       <PageNode
         node={node}
@@ -274,4 +274,3 @@ export function PageTreeNode({
     </div>
   );
 }
-

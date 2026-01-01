@@ -174,7 +174,7 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
       className={cn("transition-[scale] duration-200", isDragging ? "scale-105 z-[9999]" : "")}
     >
       <div className="px-[30px] relative group">
-        <div className="w-[280px] ml-auto mr-auto relative rounded-lg">
+        <div className="w-[280px] ml-auto mr-auto relative rounded-lg pointer-events-auto">
           {/* Header */}
           <div
             className={cn("relative flex items-center justify-between mb-2 bg-gray-600/10 rounded py-2 px-2 shadow-sm", isDragging && "border-2 border-primary/50")}

@@ -1,6 +1,6 @@
 'use client';
 
-import { DndContext, DragEndEvent, DragStartEvent, DragOverEvent, closestCenter, CollisionDetection, pointerWithin } from '@dnd-kit/core';
+import { DndContext, DragEndEvent, DragStartEvent, DragOverEvent, closestCenter, CollisionDetection, pointerWithin, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { ReactNode } from 'react';
 
 interface DragContextProps {
@@ -11,12 +11,53 @@ interface DragContextProps {
 }
 
 /**
+ * Optimized collision detection for sections
+ * Early returns and minimal filtering for better performance
+ */
+const sectionCollisionDetection: CollisionDetection = (args) => {
+  // First try pointerWithin for better detection with transformed containers
+  const pointerCollisions = pointerWithin(args);
+  
+  if (pointerCollisions.length > 0) {
+    // Fast path: find section drop zones directly
+    for (const collision of pointerCollisions) {
+      if (typeof collision.id === 'string') {
+        if (collision.id.startsWith('section-drop-') || collision.id.startsWith('drop-section-page-')) {
+          return [collision];
+        }
+      }
+    }
+    // No section drop zone found
+    return [];
+  }
+  
+  // Fall back to closestCenter for center-based detection
+  const collisions = closestCenter(args);
+  
+  // Fast path: find first section drop zone
+  for (const collision of collisions) {
+    if (typeof collision.id === 'string') {
+      if (collision.id.startsWith('section-drop-') || collision.id.startsWith('drop-section-page-')) {
+        return [collision];
+      }
+    }
+  }
+  
+  return [];
+};
+
+/**
  * Unified collision detection for both pages and sections
- * Uses pointerWithin for better detection with transformed containers, then falls back to closestCenter
+ * Uses optimized section detection when dragging sections
  */
 const unifiedCollisionDetection: CollisionDetection = (args) => {
   const activeData = args.active.data.current;
   const dragType = activeData?.type;
+
+  // Optimized path for sections
+  if (dragType === 'section') {
+    return sectionCollisionDetection(args);
+  }
 
   // First try pointerWithin for better detection with transformed containers
   const pointerCollisions = pointerWithin(args);
@@ -51,21 +92,6 @@ const unifiedCollisionDetection: CollisionDetection = (args) => {
       }
       
       return pageCollisions;
-    } else if (dragType === 'section') {
-      // When dragging sections, only look for section drop zones
-      const sectionDropZoneCollision = pointerCollisions.find(
-        collision => {
-          if (typeof collision.id !== 'string') return false;
-          return collision.id.startsWith('section-drop-') || 
-                 collision.id.startsWith('drop-section-page-');
-        }
-      );
-      if (sectionDropZoneCollision) {
-        return [sectionDropZoneCollision];
-      }
-      
-      // If no section drop zone found, try to find any droppable that might accept sections
-      return pointerCollisions;
     }
     
     // For unknown types, return all collisions
@@ -105,20 +131,6 @@ const unifiedCollisionDetection: CollisionDetection = (args) => {
     }
     
     return pageCollisions;
-  } else if (dragType === 'section') {
-    // Filter to only section-related drop zones
-    const sectionCollisions = collisions.filter(collision => {
-      if (typeof collision.id !== 'string') return false;
-      return collision.id.startsWith('section-drop-') || 
-             collision.id.startsWith('drop-section-page-');
-    });
-    
-    if (sectionCollisions.length > 0) {
-      return [sectionCollisions[0]]; // Return the closest section drop zone
-    }
-    
-    // If no section drop zones found, return empty (don't allow dropping on pages)
-    return [];
   }
   
   // For unknown types, return all collisions
@@ -126,8 +138,19 @@ const unifiedCollisionDetection: CollisionDetection = (args) => {
 };
 
 export function DragContext({ children, onDragStart, onDragEnd, onDragOver }: DragContextProps) {
+  // Configure sensors with activation constraints for better performance
+  // This prevents accidental drags and reduces unnecessary calculations
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5, // Require 5px of movement before activating drag
+      },
+    })
+  );
+
   return (
     <DndContext
+      sensors={sensors}
       collisionDetection={unifiedCollisionDetection}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}

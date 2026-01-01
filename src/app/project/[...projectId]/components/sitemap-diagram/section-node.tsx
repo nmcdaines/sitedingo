@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
 import { useSitemapDiagram } from './sitemap-diagram-context';
@@ -22,7 +22,7 @@ interface SectionNodeProps {
   onSelect?: (section: Section) => void;
 }
 
-export function SectionNode({ section, pageId, isDragging, isSelected, onSelect }: SectionNodeProps) {
+function SectionNodeComponent({ section, pageId, isDragging, isSelected, onSelect }: SectionNodeProps) {
   const { activeSectionId, setActiveSectionId, updateSection } = useSitemapDiagram();
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(section.name || '');
@@ -55,9 +55,14 @@ export function SectionNode({ section, pageId, isDragging, isSelected, onSelect 
     disabled: isEditing,
   });
 
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-  } : undefined;
+  // Memoize style to prevent unnecessary re-renders
+  const style = useMemo(() => {
+    if (!transform) return undefined;
+    return {
+      transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+      willChange: 'transform', // Optimize for hardware acceleration
+    };
+  }, [transform]);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -125,17 +130,22 @@ export function SectionNode({ section, pageId, isDragging, isSelected, onSelect 
       : `${colors.bg} ${colors.text}`;
   };
 
+  // Memoize className to prevent unnecessary recalculations
+  const className = useMemo(() => cn(
+    "relative rounded border p-2 text-xs",
+    // Only apply transition when not dragging for better performance
+    !isDragging && "transition-all",
+    isDragging && "opacity-50 scale-105",
+    isSelectedValue && "border-primary bg-primary/10 ring-2 ring-primary/20",
+    !isSelectedValue && "border-border bg-muted/50"
+  ), [isDragging, isSelectedValue]);
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
-      className={cn(
-        "relative rounded border p-2 text-xs transition-all",
-        isDragging && "opacity-50 scale-105",
-        isSelectedValue && "border-primary bg-primary/10 ring-2 ring-primary/20",
-        !isSelectedValue && "border-border bg-muted/50"
-      )}
+      className={className}
       onClick={handleClick}
       onDoubleClick={handleDoubleClick}
     >
@@ -174,4 +184,18 @@ export function SectionNode({ section, pageId, isDragging, isSelected, onSelect 
     </div>
   );
 }
+
+// Memoize component to prevent unnecessary re-renders during drag
+export const SectionNode = React.memo(SectionNodeComponent, (prevProps, nextProps) => {
+  // Only re-render if these props change
+  return (
+    prevProps.section.id === nextProps.section.id &&
+    prevProps.section.name === nextProps.section.name &&
+    prevProps.section.componentType === nextProps.section.componentType &&
+    prevProps.section.sortOrder === nextProps.section.sortOrder &&
+    prevProps.pageId === nextProps.pageId &&
+    prevProps.isDragging === nextProps.isDragging &&
+    prevProps.isSelected === nextProps.isSelected
+  );
+});
 

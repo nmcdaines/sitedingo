@@ -20,6 +20,7 @@ interface PageNodeProps {
   onDelete?: () => void;
   onDuplicate?: () => void;
   showSections?: boolean;
+  onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: any; sortOrder: number; pageId?: number } | null) => void;
   children?: React.ReactNode;
   dropZone?: React.ReactNode;
 }
@@ -32,7 +33,7 @@ const pageIcons: Record<string, typeof Home> = {
   default: FileText,
 };
 
-export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDelete, onDuplicate, showSections = true, children, dropZone }: PageNodeProps) {
+export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDelete, onDuplicate, showSections = true, onSectionSelect, children, dropZone }: PageNodeProps) {
   const contextMenuRef = React.useRef<HTMLDivElement>(null);
   const { pages, activeId, activeSectionId, showSections: contextShowSections, addPage, addSection } = useSitemapDiagram();
 
@@ -257,6 +258,12 @@ export function PageNode({ node, isSelected, onClick, isDragging, onEdit, onDele
                           pageId={node.id}
                           isDragging={activeId === `section-${section.id}`}
                           isSelected={activeSectionId === `section-${section.id}`}
+                          onSelect={(section) => {
+                            onSectionSelect?.({
+                              ...section,
+                              pageId: node.id,
+                            });
+                          }}
                         />
                         {/* Drop zone after each section - always show when dragging sections */}
                         <SectionDropZone

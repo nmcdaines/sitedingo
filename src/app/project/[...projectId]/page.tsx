@@ -82,6 +82,7 @@ function EditorContent({ projectId }: { projectId: string }) {
   const [zoom, setZoom] = React.useState(0.7);
   const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [selectedPage, setSelectedPage] = React.useState<{ id: number; name: string; slug: string; description: string | null; sortOrder: number; parentId: number | null } | null>(null);
+  const [selectedSection, setSelectedSection] = React.useState<{ id: number; componentType: string; name: string | null; metadata: any; sortOrder: number; pageId?: number } | null>(null);
   const [isPropertyPanelOpen, setIsPropertyPanelOpen] = React.useState(false);
   const [canUndo, setCanUndo] = React.useState(false);
   const [canRedo, setCanRedo] = React.useState(false);
@@ -136,11 +137,23 @@ function EditorContent({ projectId }: { projectId: string }) {
 
   const handlePageSelect = (page: typeof selectedPage) => {
     setSelectedPage(page);
+    setSelectedSection(null);
     setIsPropertyPanelOpen(page !== null);
+  };
+
+  const handleSectionSelect = (section: typeof selectedSection) => {
+    setSelectedSection(section);
+    setSelectedPage(null);
+    setIsPropertyPanelOpen(section !== null);
   };
 
   const handlePageDelete = () => {
     setSelectedPage(null);
+    setIsPropertyPanelOpen(false);
+  };
+
+  const handleSectionDelete = () => {
+    setSelectedSection(null);
     setIsPropertyPanelOpen(false);
   };
 
@@ -174,6 +187,7 @@ function EditorContent({ projectId }: { projectId: string }) {
           onZoomChange={setZoom}
           onSaveStatusChange={setSaveStatus}
           onPageSelect={handlePageSelect}
+          onSectionSelect={handleSectionSelect}
           selectedPageId={selectedPage?.id}
           onUndo={() => setCanUndo(false)}
           onRedo={() => setCanRedo(false)}
@@ -184,13 +198,15 @@ function EditorContent({ projectId }: { projectId: string }) {
         <PropertyPanel
           page={selectedPage}
           project={project}
+          section={selectedSection}
           isOpen={isPropertyPanelOpen}
           isDragging={isDragging}
           onClose={() => {
             setIsPropertyPanelOpen(false);
             setSelectedPage(null);
+            setSelectedSection(null);
           }}
-          onDelete={handlePageDelete}
+          onDelete={selectedSection ? handleSectionDelete : handlePageDelete}
         />
       </div>
       <EditorFooter 

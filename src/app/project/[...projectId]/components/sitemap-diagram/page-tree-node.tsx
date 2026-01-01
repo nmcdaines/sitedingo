@@ -16,6 +16,7 @@ interface PageTreeNodeProps {
   onPageEdit?: (page: any) => void;
   onPageDelete?: (page: any) => void;
   onPageDuplicate?: (page: any) => void;
+  onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: any; sortOrder: number; pageId?: number } | null) => void;
   children?: React.ReactNode;
 }
 
@@ -99,6 +100,7 @@ export function PageTreeNode({
   onPageEdit,
   onPageDelete,
   onPageDuplicate,
+  onSectionSelect,
   children,
 }: PageTreeNodeProps) {
   const { pages, activeId, showSections, addPage } = useSitemapDiagram();
@@ -137,6 +139,7 @@ export function PageTreeNode({
               await onPageDuplicate(pageData);
             }
           } : undefined}
+          onSectionSelect={onSectionSelect}
         />
 
         {/* Add child page button - appears on hover below leaf nodes */}
@@ -184,6 +187,7 @@ export function PageTreeNode({
             await onPageDuplicate(pageData);
           }
         } : undefined}
+        onSectionSelect={onSectionSelect}
 
         dropZone={<>
           {canHaveChildren && activeId && (

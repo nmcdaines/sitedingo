@@ -36,6 +36,7 @@ interface EditorCanvasProps {
   onZoomChange: (zoom: number) => void;
   onSaveStatusChange?: (status: 'idle' | 'saving' | 'saved' | 'error') => void;
   onPageSelect?: (page: { id: number; name: string; slug: string; description: string | null; sortOrder: number; parentId: number | null } | null) => void;
+  onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: any; sortOrder: number; pageId?: number } | null) => void;
   selectedPageId?: number | null;
   onUndo?: () => void;
   onRedo?: () => void;
@@ -44,7 +45,7 @@ interface EditorCanvasProps {
   onDragStateChange?: (isDragging: boolean) => void;
 }
 
-export function EditorCanvas({ project, sitemap, zoom, onZoomChange, onSaveStatusChange, onPageSelect, selectedPageId, onUndo, onRedo, canUndo, canRedo, onDragStateChange }: EditorCanvasProps) {
+export function EditorCanvas({ project, sitemap, zoom, onZoomChange, onSaveStatusChange, onPageSelect, onSectionSelect, selectedPageId, onUndo, onRedo, canUndo, canRedo, onDragStateChange }: EditorCanvasProps) {
   return (
     <div className="flex-1 overflow-hidden bg-[#f5f5f0] relative">
       <SitemapDiagramProvider
@@ -60,6 +61,7 @@ export function EditorCanvas({ project, sitemap, zoom, onZoomChange, onSaveStatu
           sitemapId={sitemap.id}
           onSaveStatusChange={onSaveStatusChange}
           onPageSelect={onPageSelect}
+          onSectionSelect={onSectionSelect}
           selectedPageId={selectedPageId}
           onUndo={onUndo}
           onRedo={onRedo}

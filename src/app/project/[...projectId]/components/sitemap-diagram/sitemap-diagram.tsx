@@ -20,6 +20,7 @@ interface SitemapDiagramProps {
   sitemapId?: number;
   onSaveStatusChange?: (status: "idle" | "saving" | "saved" | "error") => void;
   onPageSelect?: (page: Page | null) => void;
+  onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: any; sortOrder: number; pageId?: number } | null) => void;
   selectedPageId?: number | null;
   onUndo?: () => void;
   onRedo?: () => void;
@@ -35,6 +36,7 @@ export function SitemapDiagram({
   sitemapId,
   onSaveStatusChange,
   onPageSelect,
+  onSectionSelect,
   selectedPageId,
   onUndo,
   onRedo,
@@ -694,6 +696,7 @@ export function SitemapDiagram({
                           if (!page) return;
                           await duplicatePage(page);
                         }}
+                        onSectionSelect={onSectionSelect}
                       />
                     </div>,
 

@@ -33,7 +33,7 @@ export default function Home() {
           throw error;
         }
       }}
-      className="flex flex-col space-y-2 px-4"
+      className="flex flex-col space-y-2 px-4 max-w-2xl"
     >
       <Input type="text" name="name" placeholder="Project Name" defaultValue="Gretta" disabled={isLoading} />
       <Textarea name="description" placeholder="Project Description" defaultValue="Gretta is a boutique Architectural firm based in Los Angeles that focuses on homes as well as smaller commercial and community projects." disabled={isLoading} />

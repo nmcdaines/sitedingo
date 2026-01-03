@@ -19,13 +19,3 @@ export interface Page {
   }>;
 }
 
-export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
-
-export interface Section {
-  id: number;
-  componentType: string;
-  name: string | null;
-  metadata: Record<string, unknown>;
-  sortOrder: number;
-}
-

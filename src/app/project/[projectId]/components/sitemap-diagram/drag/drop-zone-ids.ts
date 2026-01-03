@@ -4,25 +4,6 @@
  */
 
 /**
- * Drop zone ID types
- */
-export type DropZoneType = 'page' | 'section';
-
-export interface PageDropZoneId {
-  type: 'page';
-  parentId: number | null;
-  position: number;
-}
-
-export interface SectionDropZoneId {
-  type: 'section';
-  pageId: number;
-  position: number;
-}
-
-export type DropZoneId = PageDropZoneId | SectionDropZoneId;
-
-/**
  * Type guard to check if a string is a page drop zone ID
  */
 export function isPageDropZoneId(id: string): boolean {
@@ -115,17 +96,4 @@ export function createReorderDropZoneId(parentId: number | null, position: numbe
   return `reorder-${parentIdStr}-${position}`;
 }
 
-/**
- * Create a section drop zone ID string
- */
-export function createSectionDropZoneId(pageId: number, position: number): string {
-  return `section-drop-${pageId}-${position}`;
-}
-
-/**
- * Create a page drop zone ID string
- */
-export function createPageDropZoneId(pageId: number): string {
-  return `drop-page-${pageId}`;
-}
 

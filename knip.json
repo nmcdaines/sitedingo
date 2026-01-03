@@ -10,7 +10,7 @@
     "src/components/ui/*"
   ],
   "ignoreBinaries": ["osv-scanner"],
-  "ignoreDependencies": ["postcss"],
+  "ignoreDependencies": ["postcss", "workflow"],
   "ignoreIssues": {
     "src/components/ui/**": ["exports"]
   }

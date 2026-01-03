@@ -13,7 +13,7 @@ import {
 /**
  * Simplified collision detection for sections
  */
-export const sectionCollisionDetection: CollisionDetection = (args) => {
+const sectionCollisionDetection: CollisionDetection = (args) => {
   // First try pointerWithin for better detection with transformed containers
   const pointerCollisions = pointerWithin(args);
   

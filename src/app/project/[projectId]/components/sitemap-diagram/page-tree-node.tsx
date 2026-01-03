@@ -188,8 +188,6 @@ export function PageTreeNode({
         </>}
       >
 
-
-
         {/* Vertical line */}
         <VerticalLine />
 

@@ -11,13 +11,12 @@ interface SectionDropZoneProps {
 }
 
 export function SectionDropZone({ pageId, position }: SectionDropZoneProps) {
-  // Generate ID internally from pageId and position
-  const id = useMemo(() => {
+  const droppableId = useMemo(() => {
     return `section-drop-${pageId}-${position}`;
   }, [pageId, position]);
 
   const { setNodeRef, isOver, active } = useDroppable({
-    id,
+    id: droppableId,
     data: {
       type: 'section-drop-zone',
       expectedType: 'section',
@@ -54,4 +53,3 @@ export function SectionDropZone({ pageId, position }: SectionDropZoneProps) {
     </div>
   );
 }
-

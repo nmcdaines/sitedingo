@@ -72,27 +72,18 @@ export function PageNode({ node, onClick, isDragging, onEdit, onDelete, onDuplic
   const pageData = pages.find(p => p.id === node.id);
   const showSectionsValue = showSections !== undefined ? showSections : contextShowSections;
 
-  // Handle adding a new sibling page
   const handleAddPage = async (insertBefore: boolean) => {
-    if (!pageData) {
-      console.error('Missing page data for node:', node.id);
-      return;
-    }
-
-    const parentId = pageData.parentId;
-    const targetPosition = insertBefore ? pageData.sortOrder : pageData.sortOrder + 1;
-
-    await addPage(parentId, targetPosition);
+    if (!pageData) throw new Error(`Missing page data for node: ${node.id}`);
+    await addPage(
+      pageData.parentId,
+      insertBefore
+        ? pageData.sortOrder
+        : pageData.sortOrder + 1
+    );
   };
 
-
-  // Handle adding a new child page
   const handleAddChildPage = async () => {
-    if (!pageData) {
-      console.error('Missing page data for node:', node.id);
-      return;
-    }
-
+    if (!pageData) throw new Error(`Missing page data for node: ${node.id}`);
     await addPage(node.id, 0);
   };
 
@@ -377,7 +368,6 @@ export function PageNode({ node, onClick, isDragging, onEdit, onDelete, onDuplic
                 <PlusIcon className="w-4 h-4" />
               </Button>
             </div>
-
           )}
         </div>
 

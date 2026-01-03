@@ -35,9 +35,10 @@ function SectionNodeComponent({ section, pageId, isDragging, isSelected, onSelec
   useEffect(() => {
     if (!isEditing && prevSectionNameRef.current !== section.name) {
       prevSectionNameRef.current = section.name;
-      setTimeout(() => {
+      const timeout = setTimeout(() => {
         setEditValue(section.name || '');
       }, 0);
+      return () => clearTimeout(timeout)
     }
   }, [section.name, isEditing]);
 
@@ -141,11 +142,14 @@ function SectionNodeComponent({ section, pageId, isDragging, isSelected, onSelec
   // Memoize className to prevent unnecessary recalculations
   const className = useMemo(() => cn(
     "relative rounded border p-2 text-xs",
+
     // Only apply transition when not dragging for better performance
-    !isDragging && "transition-all",
-    isDragging && "opacity-50 scale-105",
-    isSelectedValue && "border-primary bg-primary/10 ring-2 ring-primary/20",
-    !isSelectedValue && "border-border bg-muted/50"
+    isDragging
+      ? "transition-all"
+      : "opacity-50 scale-105",
+    isSelectedValue
+      ? "border-primary bg-primary/10 ring-2 ring-primary/20"
+      : "border-border bg-muted/50"
   ), [isDragging, isSelectedValue]);
 
   return (
@@ -206,4 +210,3 @@ export const SectionNode = React.memo(SectionNodeComponent, (prevProps, nextProp
     prevProps.isSelected === nextProps.isSelected
   );
 });
-

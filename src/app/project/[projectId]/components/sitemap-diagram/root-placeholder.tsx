@@ -17,13 +17,11 @@ export function RootPlaceholder({ parentId, position }: RootPlaceholderProps) {
   const hoverInfo = useDropZoneHover();
 
   // Check if we should show a placeholder at this position
-  const shouldShowPlaceholder = hoverInfo && 
-    hoverInfo.parentId === parentId && 
+  const shouldShowPlaceholder = hoverInfo &&
+    hoverInfo.parentId === parentId &&
     hoverInfo.position === position;
 
-  if (!shouldShowPlaceholder || !hoverInfo) {
-    return null;
-  }
+  if (!shouldShowPlaceholder || !hoverInfo) return null;
 
   return (
     <div
@@ -41,4 +39,3 @@ export function RootPlaceholder({ parentId, position }: RootPlaceholderProps) {
     </div>
   );
 }
-

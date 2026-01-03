@@ -23,6 +23,7 @@ interface PageNodeProps {
   onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number; pageId?: number } | null) => void;
   children?: React.ReactNode;
   dropZone?: React.ReactNode;
+  readOnly?: boolean;
 }
 
 const pageIcons: Record<string, typeof Home> = {
@@ -64,7 +65,7 @@ const pageIcons: Record<string, typeof Home> = {
   default: FileText,
 };
 
-export function PageNode({ node, onClick, isDragging, onEdit, onDelete, onDuplicate, showSections = true, onSectionSelect, children, dropZone }: PageNodeProps) {
+export function PageNode({ node, onClick, isDragging, onEdit, onDelete, onDuplicate, showSections = true, onSectionSelect, children, dropZone, readOnly = false }: PageNodeProps) {
   const contextMenuRef = React.useRef<HTMLDivElement>(null);
   const { pages, activeId, activeSectionId, showSections: contextShowSections, addPage, addSection } = useSitemapDiagram();
 
@@ -98,6 +99,7 @@ export function PageNode({ node, onClick, isDragging, onEdit, onDelete, onDuplic
       type: 'page',
       node,
     },
+    disabled: readOnly,
   });
 
   const {
@@ -109,6 +111,7 @@ export function PageNode({ node, onClick, isDragging, onEdit, onDelete, onDuplic
       accepts: ['page'],
       node,
     },
+    disabled: readOnly,
   });
 
   // Also make the sections container a drop zone for sections (fallback to append at end)
@@ -218,15 +221,35 @@ export function PageNode({ node, onClick, isDragging, onEdit, onDelete, onDuplic
             }}
             {...customListeners}
           >
-            <div className={cn('absolute left-0 -translate-x-full h-full pr-[9px] hidden z-10', !isDragging && 'group-hover:block')}>
-              <Button
-                variant="outline"
-                className='add-button h-full z-20'
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  handleAddPage(true); // Insert before
-                }}
+            {!readOnly && (
+              <div className={cn('absolute left-0 -translate-x-full h-full pr-[9px] hidden z-10', !isDragging && 'group-hover:block')}>
+                <Button
+                  variant="outline"
+                  className='add-button h-full z-20'
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    handleAddPage(true); // Insert before
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                  }}
+                  style={{ zIndex: 9999 }}
+                >
+                  <PlusIcon />
+                </Button>
+              </div>
+            )}
+            {!readOnly && (
+              <div className={cn('absolute right-0 translate-x-full h-full pl-[9px] hidden z-10', !isDragging && 'group-hover:block')}>
+                <Button
+                  variant="outline"
+                  className='add-button h-full z-20'
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    handleAddPage(false); // Insert after
+                  }}
                 onMouseDown={(e) => {
                   e.stopPropagation();
                 }}
@@ -234,24 +257,8 @@ export function PageNode({ node, onClick, isDragging, onEdit, onDelete, onDuplic
               >
                 <PlusIcon />
               </Button>
-            </div>
-            <div className={cn('absolute right-0 translate-x-full h-full pl-[9px] hidden z-10', !isDragging && 'group-hover:block')}>
-              <Button
-                variant="outline"
-                className='add-button h-full z-20'
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  handleAddPage(false); // Insert after
-                }}
-                onMouseDown={(e) => {
-                  e.stopPropagation();
-                }}
-                style={{ zIndex: 9999 }}
-              >
-                <PlusIcon />
-              </Button>
-            </div>
+              </div>
+            )}
 
             <div className="flex items-center gap-2">
               <Icon className="w-5 h-5 text-primary" />
@@ -260,13 +267,15 @@ export function PageNode({ node, onClick, isDragging, onEdit, onDelete, onDuplic
                 <span className="text-xs text-muted-foreground">{node.slug}</span>
               </div>
             </div>
-            <div ref={contextMenuRef} onClick={(e) => e.stopPropagation()}>
-              <ContextMenu
-                onEdit={() => onEdit?.()}
-                onDelete={() => onDelete?.()}
-                onDuplicate={onDuplicate ? () => onDuplicate() : undefined}
-              />
-            </div>
+            {!readOnly && (
+              <div ref={contextMenuRef} onClick={(e) => e.stopPropagation()}>
+                <ContextMenu
+                  onEdit={() => onEdit?.()}
+                  onDelete={() => onDelete?.()}
+                  onDuplicate={onDuplicate ? () => onDuplicate() : undefined}
+                />
+              </div>
+            )}
           </div>
 
           {/* Sections */}
@@ -301,6 +310,7 @@ export function PageNode({ node, onClick, isDragging, onEdit, onDelete, onDuplic
                               pageId: node.id,
                             });
                           }}
+                          readOnly={readOnly}
                         />
                         {/* Drop zone after each section - always show when dragging sections */}
                         <SectionDropZone
@@ -311,17 +321,19 @@ export function PageNode({ node, onClick, isDragging, onEdit, onDelete, onDuplic
                       </React.Fragment>
                     ))}
                   {/* Add section button when sections exist */}
-                  <Button
-                    className='w-full mt-2'
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      addSection(node.id, node.sections.length);
-                    }}
-                  >
-                    <PlusIcon className="w-4 h-4" /> Add Section
-                  </Button>
+                  {!readOnly && (
+                    <Button
+                      className='w-full mt-2'
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        addSection(node.id, node.sections.length);
+                      }}
+                    >
+                      <PlusIcon className="w-4 h-4" /> Add Section
+                    </Button>
+                  )}
                 </>
               ) : (
                 <>
@@ -331,26 +343,28 @@ export function PageNode({ node, onClick, isDragging, onEdit, onDelete, onDuplic
                     position={0}
                     isVisible={activeId?.startsWith('section-') || false}
                   />
-                  <div className="flex flex-col items-center gap-2">
-                    <Button
-                      className='w-full'
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        addSection(node.id, 0);
-                      }}
-                    >
-                      <PlusIcon /> Section
-                    </Button>
-                    <Button className='w-full' variant="outline"><StarsIcon /> Generate Content</Button>
-                  </div>
+                  {!readOnly && (
+                    <div className="flex flex-col items-center gap-2">
+                      <Button
+                        className='w-full'
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addSection(node.id, 0);
+                        }}
+                      >
+                        <PlusIcon /> Section
+                      </Button>
+                      <Button className='w-full' variant="outline"><StarsIcon /> Generate Content</Button>
+                    </div>
+                  )}
                 </>
               )}
             </div>
           )}
 
             {/* Add child page button - appears on hover below leaf nodes */}
-          {node.children.length <= 0 && (
+          {!readOnly && node.children.length <= 0 && (
             <div className={cn('absolute pt-2 hidden z-10 left-1/2 -translate-x-1/2', !activeId && 'group-hover:block')}>
               <Button
                 variant="outline"

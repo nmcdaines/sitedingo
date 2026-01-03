@@ -16,6 +16,7 @@ interface PageTreeNodeProps {
   onPageDuplicate?: (page: Page | null) => void;
   onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number; pageId?: number } | null) => void;
   children?: React.ReactNode;
+  readOnly?: boolean;
 }
 
 // Vertical line component (SVG)
@@ -100,6 +101,7 @@ export function PageTreeNode({
   onPageDuplicate,
   onSectionSelect,
   children,
+  readOnly = false,
 }: PageTreeNodeProps) {
   const { pages, activeId, showSections } = useSitemapDiagram();
   const pageData = pages.find(p => p.id === node.id);
@@ -128,6 +130,7 @@ export function PageTreeNode({
             }
           } : undefined}
           onSectionSelect={onSectionSelect}
+          readOnly={readOnly}
         />
 
         {children}
@@ -157,6 +160,7 @@ export function PageTreeNode({
           }
         } : undefined}
         onSectionSelect={onSectionSelect}
+        readOnly={readOnly}
 
         dropZone={<>
           {canHaveChildren && activeId && (
@@ -211,6 +215,7 @@ export function PageTreeNode({
                   onPageEdit={onPageEdit}
                   onPageDelete={onPageDelete}
                   onPageDuplicate={onPageDuplicate}
+                  readOnly={readOnly}
                 >
                   {canHaveChildren && activeId && (
                     <EmptySpaceDropZone

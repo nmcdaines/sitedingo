@@ -9,6 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { client } from "@/lib/client";
 import { useAutoSave } from "../hooks/use-auto-save";
 import { Input } from "@/components/ui/input";
+import { ShareDialog } from "./share-dialog";
 
 interface Project {
   id: number;
@@ -26,6 +27,7 @@ export function EditorHeader({ project }: EditorHeaderProps) {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [projectName, setProjectName] = useState(project.name);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const prevProjectNameRef = useRef(project.name);
   
@@ -144,7 +146,11 @@ export function EditorHeader({ project }: EditorHeaderProps) {
 
         {/* Right side: Actions */}
         <div className="flex items-center gap-2 ml-auto">
-          <Button variant="ghost" size="sm">
+          <Button 
+            variant="ghost" 
+            size="sm"
+            onClick={() => setIsShareDialogOpen(true)}
+          >
             <Share2 className="w-4 h-4" />
           </Button>
           {/* <Button size="sm" className="bg-primary">
@@ -153,6 +159,11 @@ export function EditorHeader({ project }: EditorHeaderProps) {
           </Button> */}
         </div>
       </div>
+      <ShareDialog
+        projectId={projectId}
+        isOpen={isShareDialogOpen}
+        onClose={() => setIsShareDialogOpen(false)}
+      />
     </header>
   );
 }

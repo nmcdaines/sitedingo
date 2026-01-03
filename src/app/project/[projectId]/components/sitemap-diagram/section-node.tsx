@@ -20,9 +20,10 @@ interface SectionNodeProps {
   isDragging?: boolean;
   isSelected?: boolean;
   onSelect?: (section: Section) => void;
+  readOnly?: boolean;
 }
 
-function SectionNodeComponent({ section, pageId, isDragging, isSelected, onSelect }: SectionNodeProps) {
+function SectionNodeComponent({ section, pageId, isDragging, isSelected, onSelect, readOnly = false }: SectionNodeProps) {
   const { activeSectionId, setActiveSectionId, updateSection } = useSitemapDiagram();
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(section.name || '');
@@ -60,7 +61,7 @@ function SectionNodeComponent({ section, pageId, isDragging, isSelected, onSelec
       section,
       pageId,
     },
-    disabled: isEditing,
+    disabled: isEditing || readOnly,
   });
 
   // Memoize style to prevent unnecessary re-renders

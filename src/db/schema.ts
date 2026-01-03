@@ -74,3 +74,14 @@ export const sections = pgTable("sections", (t) => ({
   createdAt: t.timestamp().notNull().defaultNow(),
   updatedAt: t.timestamp().notNull().defaultNow(),
 }));
+
+// Shares (public share links for projects)
+export const shares = pgTable("shares", (t) => ({
+  id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
+  projectId: t.integer().notNull().references(() => projects.id, { onDelete: "cascade" }),
+  shareToken: t.varchar({ length: 255 }).notNull().unique(),
+  createdAt: t.timestamp().notNull().defaultNow(),
+  expiresAt: t.timestamp(),
+  isActive: t.boolean().notNull().default(true),
+  createdBy: t.integer().notNull().references(() => users.id, { onDelete: "cascade" }),
+}));

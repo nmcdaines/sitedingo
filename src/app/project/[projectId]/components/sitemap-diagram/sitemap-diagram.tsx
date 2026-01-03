@@ -24,6 +24,7 @@ interface SitemapDiagramProps {
   onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number; pageId?: number } | null) => void;
   selectedPageId?: number | null;
   onDragStateChange?: (isDragging: boolean) => void;
+  readOnly?: boolean;
 }
 
 export function SitemapDiagram({
@@ -34,6 +35,7 @@ export function SitemapDiagram({
   onSectionSelect,
   selectedPageId,
   onDragStateChange,
+  readOnly = false,
 }: SitemapDiagramProps) {
   // Use context for state and mutations
   const {
@@ -385,6 +387,7 @@ export function SitemapDiagram({
 
   // Handle drag start (for both pages and sections)
   const handleDragStart = (event: DragStartEvent) => {
+    if (readOnly) return;
     const activeData = event.active.data.current;
     const id = event.active.id as string;
     
@@ -406,6 +409,7 @@ export function SitemapDiagram({
 
   // Handle drag end (for both pages and sections)
   const handleDragEnd = async (event: DragEndEvent) => {
+    if (readOnly) return;
     const activeData = event.active.data.current;
     
     if (activeData?.type === "page") {
@@ -420,16 +424,11 @@ export function SitemapDiagram({
 
   // Handle drag over (for both pages and sections)
   const handleDragOver = () => {
+    if (readOnly) return;
     // Could add visual feedback here
   };
 
-
-  return (
-    <DragContext
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
-      onDragOver={handleDragOver}
-    >
+  const content = (
       <div
         ref={containerRef}
         className="w-full h-full overflow-hidden relative"
@@ -536,6 +535,7 @@ export function SitemapDiagram({
                       }}
                     >
                       <PageTreeNode
+                        readOnly={readOnly}
                         node={rootNode}
                         selectedNodeId={selectedNodeId}
                         onPageSelect={(page) => {
@@ -591,6 +591,19 @@ export function SitemapDiagram({
             </div>
           </div>
         </div>
+  );
+
+  if (readOnly) {
+    return content;
+  }
+
+  return (
+    <DragContext
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      onDragOver={handleDragOver}
+    >
+      {content}
     </DragContext>
   );
 }

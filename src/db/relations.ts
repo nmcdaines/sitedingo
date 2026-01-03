@@ -4,6 +4,7 @@ import { defineRelations } from "drizzle-orm";
 export const relations = defineRelations(schema, (r) => ({
   users: {
     teamMemberships: r.many.teamMembers(),
+    shares: r.many.shares(),
   },
   teams: {
     members: r.many.teamMembers(),
@@ -25,6 +26,7 @@ export const relations = defineRelations(schema, (r) => ({
       to: r.teams.id,
     }),
     sitemaps: r.many.sitemaps(),
+    shares: r.many.shares(),
   },
   sitemaps: {
     project: r.one.projects({
@@ -52,6 +54,16 @@ export const relations = defineRelations(schema, (r) => ({
     page: r.one.pages({
       from: r.sections.pageId,
       to: r.pages.id,
+    }),
+  },
+  shares: {
+    project: r.one.projects({
+      from: r.shares.projectId,
+      to: r.projects.id,
+    }),
+    creator: r.one.users({
+      from: r.shares.createdBy,
+      to: r.users.id,
     }),
   },
 }));

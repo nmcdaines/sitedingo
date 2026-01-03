@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { cn } from '@/lib/utils';
-import { useSitemapDiagram } from './sitemap-diagram-context';
+import { useSitemapDiagram } from '@/app/project/[projectId]/components/sitemap-diagram/sitemap-diagram-context';
 import { Input } from '@/components/ui/input';
 
 interface Section {

@@ -73,6 +73,7 @@ export function PropertyPanel({ page, project, section, isOpen, isDragging = fal
         name: section.name || '',
         slug: '',
         description: '',
+        icon: '',
         componentType: section.componentType,
       });
     } else if (page) {
@@ -88,6 +89,7 @@ export function PropertyPanel({ page, project, section, isOpen, isDragging = fal
         name: project.name,
         slug: '',
         description: project.description || '',
+        icon: '',
         componentType: '',
       });
     }

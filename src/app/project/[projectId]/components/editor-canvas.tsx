@@ -15,6 +15,7 @@ interface Project {
       name: string;
       slug: string;
       description: string | null;
+      icon: string | null;
       sortOrder: number;
       parentId: number | null;
       sections: Array<{
@@ -34,7 +35,7 @@ interface EditorCanvasProps {
   zoom: number;
   onZoomChange: (zoom: number) => void;
   onSaveStatusChange?: (status: 'idle' | 'saving' | 'saved' | 'error') => void;
-  onPageSelect?: (page: { id: number; name: string; slug: string; description: string | null; sortOrder: number; parentId: number | null } | null) => void;
+  onPageSelect?: (page: { id: number; name: string; slug: string; description: string | null; icon: string | null; sortOrder: number; parentId: number | null } | null) => void;
   onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number; pageId?: number } | null) => void;
   selectedPageId?: number | null;
   onDragStateChange?: (isDragging: boolean) => void;

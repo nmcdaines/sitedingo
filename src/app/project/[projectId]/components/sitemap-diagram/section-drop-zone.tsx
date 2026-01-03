@@ -27,7 +27,7 @@ export function SectionDropZone({ pageId, position }: SectionDropZoneProps) {
 
   const isActiveElementSection = useMemo(() => {
     return active?.data.current?.type === 'section';
-  }, [active?.data.current?.type]);
+  }, [active]);
 
   // Always render the drop zone (for drag detection) but make it invisible when not needed
   return (

@@ -188,12 +188,13 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
             name: t.String(),
             slug: t.String(),
             description: t.Nullable(t.String()),
+            icon: t.Nullable(t.String()),
             sortOrder: t.Number(),
 
             sections: t.Array(t.Object({
               id: t.Number(),
               componentType: t.String(),
-              name: t.String(),
+              name: t.Nullable(t.String()),
               metadata: t.Any(),
               sortOrder: t.Number(),
             }))
@@ -268,7 +269,7 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
   // Edit a project
   .put("/:id", async ({ user, params, body }) => {
     const project = await db.query.projects.findFirst({
-      where: (projects, { eq }) => eq(projects.id, Number(params.id)),
+      where: { id: Number(params.id) },
       with: {
         team: true,
       }
@@ -277,7 +278,7 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
     if (!project) return status(404, { error: 'Project not found' })
 
     const teamIds = user.teams.map(team => team.id)
-    if (!teamIds.includes(project.team.id)) {
+    if (!project.team || !teamIds.includes(project.team.id)) {
       return status(403, { error: 'Forbidden' })
     }
 

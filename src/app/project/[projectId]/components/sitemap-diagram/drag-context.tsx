@@ -15,9 +15,6 @@ interface DragContextProps {
  * Early returns and minimal filtering for better performance
  */
 const sectionCollisionDetection: CollisionDetection = (args) => {
-  const activeData = args.active.data.current;
-  const dragType = activeData?.type;
-
   // First try pointerWithin for better detection with transformed containers
   const pointerCollisions = pointerWithin(args);
   

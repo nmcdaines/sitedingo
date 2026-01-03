@@ -81,7 +81,7 @@ export function EmptySpaceDropZone({
     if (direction === 'next' && currentNode.position === activeData.node?.sortOrder - 1 && parentId === activeData.node.parentId) return true;
 
     return false;
-  }, [currentNode, active, type, direction, position]);
+  }, [currentNode, active, type, direction, parentId]);
 
   // Combine visibility logic
   const effectiveVisibility = isVisible && !shouldHide;

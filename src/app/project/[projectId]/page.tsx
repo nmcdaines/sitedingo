@@ -25,6 +25,7 @@ interface ProjectData {
       name: string;
       slug: string;
       description: string | null;
+      icon: string | null;
       sortOrder: number;
       parentId: number | null;
       sections: Array<{
@@ -227,7 +228,7 @@ function EditorContent({ projectId }: { projectId: string }) {
   const [project, query] = useGetProjectQuery(projectId);
   const [zoom, setZoom] = React.useState(0.7);
   const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [selectedPage, setSelectedPage] = React.useState<{ id: number; name: string; slug: string; description: string | null; sortOrder: number; parentId: number | null } | null>(null);
+  const [selectedPage, setSelectedPage] = React.useState<{ id: number; name: string; slug: string; description: string | null; icon: string | null; sortOrder: number; parentId: number | null } | null>(null);
   const [selectedSection, setSelectedSection] = React.useState<{ id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number; pageId?: number } | null>(null);
   const [isPropertyPanelOpen, setIsPropertyPanelOpen] = React.useState(false);
   const [isDragging, setIsDragging] = React.useState(false);
@@ -384,7 +385,7 @@ function EditorContent({ projectId }: { projectId: string }) {
             onPageSelect={handlePageSelect}
           >
             <EditorCanvas 
-              project={project} 
+              project={{ ...project, sitemaps: project.sitemaps || [] }} 
               sitemap={sitemap} 
               zoom={zoom} 
               onZoomChange={setZoom}
@@ -424,9 +425,6 @@ function EditorContent({ projectId }: { projectId: string }) {
       </div>
       <EditorFooter 
         zoom={zoom} 
-        onZoomIn={handleZoomIn}
-        onZoomOut={handleZoomOut}
-        onZoomFit={handleZoomFit}
         saveStatus={saveStatus}
       />
     </>

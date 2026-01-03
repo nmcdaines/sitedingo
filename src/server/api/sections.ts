@@ -33,7 +33,7 @@ export const SectionsController = new Elysia({ prefix: "/sections", tags: ["Sect
 
     // Check if user has access to the project
     const teamIds = user.teams.map(team => team.id)
-    if (!teamIds.includes(section.page.sitemap.project.team.id)) {
+    if (!section.page?.sitemap?.project?.team || !teamIds.includes(section.page.sitemap.project.team.id)) {
       return status(403, { error: 'Forbidden' })
     }
 
@@ -76,7 +76,7 @@ export const SectionsController = new Elysia({ prefix: "/sections", tags: ["Sect
     if (!page) return status(404, { error: 'Page not found' })
 
     const teamIds = user.teams.map(team => team.id)
-    if (!teamIds.includes(page.sitemap.project.team.id)) {
+    if (!page.sitemap?.project?.team || !teamIds.includes(page.sitemap.project.team.id)) {
       return status(403, { error: 'Forbidden' })
     }
 
@@ -139,7 +139,7 @@ export const SectionsController = new Elysia({ prefix: "/sections", tags: ["Sect
     if (!section) return status(404, { error: 'Section not found' })
 
     const teamIds = user.teams.map(team => team.id)
-    if (!teamIds.includes(section.page.sitemap.project.team.id)) {
+    if (!section.page?.sitemap?.project?.team || !teamIds.includes(section.page.sitemap.project.team.id)) {
       return status(403, { error: 'Forbidden' })
     }
 
@@ -164,7 +164,7 @@ export const SectionsController = new Elysia({ prefix: "/sections", tags: ["Sect
 
       if (!targetPage) return status(404, { error: 'Target page not found' })
 
-      if (!teamIds.includes(targetPage.sitemap.project.team.id)) {
+      if (!targetPage.sitemap?.project?.team || !teamIds.includes(targetPage.sitemap.project.team.id)) {
         return status(403, { error: 'Forbidden: No access to target page' })
       }
     }
@@ -233,7 +233,7 @@ export const SectionsController = new Elysia({ prefix: "/sections", tags: ["Sect
     if (!section) return status(404, { error: 'Section not found' })
 
     const teamIds = user.teams.map(team => team.id)
-    if (!teamIds.includes(section.page.sitemap.project.team.id)) {
+    if (!section.page?.sitemap?.project?.team || !teamIds.includes(section.page.sitemap.project.team.id)) {
       return status(403, { error: 'Forbidden' })
     }
 
@@ -275,7 +275,7 @@ export const SectionsController = new Elysia({ prefix: "/sections", tags: ["Sect
     if (!section) return status(404, { error: 'Section not found' })
 
     const teamIds = user.teams.map(team => team.id)
-    if (!teamIds.includes(section.page.sitemap.project.team.id)) {
+    if (!section.page?.sitemap?.project?.team || !teamIds.includes(section.page.sitemap.project.team.id)) {
       return status(403, { error: 'Forbidden' })
     }
 

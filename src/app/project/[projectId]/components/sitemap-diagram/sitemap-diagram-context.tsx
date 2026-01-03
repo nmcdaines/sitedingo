@@ -478,7 +478,7 @@ export function SitemapDiagramProvider({
       );
 
       // Replace optimistic page with real page
-      const actualPage = (newPage as { data?: Page } | Page).data || newPage;
+      const actualPage = ('data' in newPage && newPage.data) ? newPage.data : (newPage as unknown as Page);
 
       dataDispatch({
         type: 'REPLACE_TEMP_PAGE',
@@ -867,6 +867,7 @@ export function SitemapDiagramProvider({
         name: `${page.name} (Copy)`,
         slug: `${page.slug}-copy`,
         description: page.description,
+        icon: page.icon,
         sortOrder: page.sortOrder + 1,
       });
 
@@ -897,7 +898,7 @@ export function SitemapDiagramProvider({
         sortOrder: targetPosition,
       });
 
-      const actualSection = (newSection as { data?: { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number } } | { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number }).data || newSection;
+      const actualSection = ('data' in newSection && newSection.data) ? newSection.data : (newSection as unknown as { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number });
 
       // Update local state optimistically
       const updatedPages = dataState.pages.map((p) => {
@@ -978,7 +979,7 @@ export function SitemapDiagramProvider({
         pageId: page.id,
       });
 
-      const actualSection = (updatedSection as { data?: { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number } } | { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number }).data || updatedSection;
+      const actualSection = ('data' in updatedSection && updatedSection.data) ? updatedSection.data : (updatedSection as unknown as { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number });
 
       // Update local state
       const updatedPages = dataState.pages.map((p) => {

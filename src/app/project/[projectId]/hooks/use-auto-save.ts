@@ -15,7 +15,7 @@ export function useAutoSave<T>(
 ) {
   const { debounceMs = 500, onSave, onError } = options;
   const [status, setStatus] = useState<SaveStatus>('idle');
-  const timeoutRef = useRef<NodeJS.Timeout>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const dataRef = useRef(data);
   const isInitialMount = useRef(true);
   

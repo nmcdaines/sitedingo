@@ -9,7 +9,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
   // Get a page
   .get("/:id", async ({ user, params }) => {
     const page = await db.query.pages.findFirst({
-      where: (pages, { eq }) => eq(pages.id, Number(params.id)),
+      where: { id: Number(params.id) },
       with: {
         sitemap: {
           with: {
@@ -28,11 +28,26 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
 
     // Check if user has access to the project
     const teamIds = user.teams.map(team => team.id)
-    if (!teamIds.includes(page.sitemap.project.team.id)) {
+    if (!page.sitemap?.project?.team || !teamIds.includes(page.sitemap.project.team.id)) {
       return status(403, { error: 'Forbidden' })
     }
 
-    return page
+    return {
+      id: page.id,
+      name: page.name,
+      slug: page.slug,
+      description: page.description,
+      icon: page.icon,
+      sortOrder: page.sortOrder,
+      parentId: page.parentId,
+      sections: page.sections.map(s => ({
+        id: s.id,
+        componentType: s.componentType,
+        name: s.name,
+        metadata: s.metadata,
+        sortOrder: s.sortOrder,
+      }))
+    }
   }, {
     response: {
       404: t.Object({ error: t.String() }),
@@ -60,7 +75,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
   .post("", async ({ user, body }) => {
     // Verify user has access to the sitemap
     const sitemap = await db.query.sitemaps.findFirst({
-      where: (sitemaps, { eq }) => eq(sitemaps.id, body.sitemapId),
+      where: { id: body.sitemapId },
       with: {
         project: {
           with: {
@@ -73,7 +88,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
     if (!sitemap) return status(404, { error: 'Sitemap not found' })
 
     const teamIds = user.teams.map(team => team.id)
-    if (!teamIds.includes(sitemap.project.team.id)) {
+    if (!sitemap.project?.team || !teamIds.includes(sitemap.project.team.id)) {
       return status(403, { error: 'Forbidden' })
     }
 
@@ -83,10 +98,10 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
     // But we validate that parentId is not the same as any existing page in the same sitemap
     if (body.parentId) {
       const parentPage = await db.query.pages.findFirst({
-        where: (pages, { eq, and }) => and(
-          eq(pages.id, body.parentId),
-          eq(pages.sitemapId, body.sitemapId)
-        )
+        where: { 
+          id: body.parentId,
+          sitemapId: body.sitemapId
+        }
       })
       if (!parentPage) {
         return status(400, { error: 'Parent page not found' })
@@ -140,7 +155,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
   // Update a page
   .put("/:id", async ({ user, params, body }) => {
     const page = await db.query.pages.findFirst({
-      where: (pages, { eq }) => eq(pages.id, Number(params.id)),
+      where: { id: Number(params.id) },
       with: {
         sitemap: {
           with: {
@@ -157,7 +172,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
     if (!page) return status(404, { error: 'Page not found' })
 
     const teamIds = user.teams.map(team => team.id)
-    if (!teamIds.includes(page.sitemap.project.team.id)) {
+    if (!page.sitemap?.project?.team || !teamIds.includes(page.sitemap.project.team.id)) {
       return status(403, { error: 'Forbidden' })
     }
 
@@ -212,7 +227,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
   // Delete a page
   .delete("/:id", async ({ user, params }) => {
     const page = await db.query.pages.findFirst({
-      where: (pages, { eq }) => eq(pages.id, Number(params.id)),
+      where: { id: Number(params.id) },
       with: {
         sitemap: {
           with: {
@@ -229,7 +244,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
     if (!page) return status(404, { error: 'Page not found' })
 
     const teamIds = user.teams.map(team => team.id)
-    if (!teamIds.includes(page.sitemap.project.team.id)) {
+    if (!page.sitemap?.project?.team || !teamIds.includes(page.sitemap.project.team.id)) {
       return status(403, { error: 'Forbidden' })
     }
 
@@ -248,7 +263,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
   // Reorder pages
   .put("/:id/reorder", async ({ user, params, body }) => {
     const page = await db.query.pages.findFirst({
-      where: (pages, { eq }) => eq(pages.id, Number(params.id)),
+      where: { id: Number(params.id) },
       with: {
         sitemap: {
           with: {
@@ -265,7 +280,7 @@ export const PagesController = new Elysia({ prefix: "/pages", tags: ["Pages"] })
     if (!page) return status(404, { error: 'Page not found' })
 
     const teamIds = user.teams.map(team => team.id)
-    if (!teamIds.includes(page.sitemap.project.team.id)) {
+    if (!page.sitemap?.project?.team || !teamIds.includes(page.sitemap.project.team.id)) {
       return status(403, { error: 'Forbidden' })
     }
 

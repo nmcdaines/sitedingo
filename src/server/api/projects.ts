@@ -208,11 +208,29 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
 
   // List all projects
   .get("", async ({ user }) => {
-    return await db.query.projects.findMany({
+    const projects = await db.query.projects.findMany({
       where: {
         teamId: {
           in: user.teams.map(team => team.id)
         }
+      },
+      with: {
+        sitemaps: {
+          with: {
+            pages: true
+          }
+        }
+      }
+    })
+
+    return projects.map(project => {
+      const pageCount = project.sitemaps.reduce((total, sitemap) => total + sitemap.pages.length, 0)
+      return {
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        pageCount,
+        updatedAt: project.updatedAt.toISOString(),
       }
     })
   }, {
@@ -221,6 +239,8 @@ export const ProjectController = new Elysia({ prefix: "/projects", tags: ["Proje
         id: t.Number(),
         name: t.String(),
         description: t.Nullable(t.String()),
+        pageCount: t.Number(),
+        updatedAt: t.String(),
       }))
     }
   })

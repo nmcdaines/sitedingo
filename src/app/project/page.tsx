@@ -1,10 +1,11 @@
 'use client';
 
-import { Button } from "@/components/ui/button";
 import { client } from "@/lib/client";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { Suspense } from "react";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatTimeAgo } from "@/lib/utils";
 
 function useListProjectsQuery() {
   const query = useSuspenseQuery({
@@ -18,8 +19,8 @@ function useListProjectsQuery() {
 
 export default function ListProjectsPage() {
   return (
-    <div>
-      <h1>List of Projects</h1>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Recent Projects</h1>
       <Suspense fallback={<p>Loading projects...</p>}>
         <ProjectsList />
       </Suspense>
@@ -27,26 +28,41 @@ export default function ListProjectsPage() {
   );
 }
 
-
 function ProjectsList() {
   const [projects] = useListProjectsQuery()
+  
+  if (!projects || projects.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">No projects found.</p>
+      </div>
+    )
+  }
+
   return (
-    <>
-      {
-        projects
-          ? projects.map(project => (
-            <div key={project.id} style={{ marginBottom: '1rem' }}>
-              <h2>{project.name}</h2>
-              <p>{project.description}</p>
-              <Link href={`/project/${project.id}`}>
-                <Button>
-                  View Project
-                </Button>
-              </Link>
-            </div>
-          ))
-          : <p>No projects found.</p>
-      }
-    </>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {projects.map(project => (
+        <Link key={project.id} href={`/project/${project.id}`}>
+          <Card className="h-full transition-all hover:shadow-md hover:border-primary/50 cursor-pointer">
+            <CardHeader>
+              <CardTitle className="line-clamp-1">{project.name}</CardTitle>
+              {project.description && (
+                <CardDescription className="line-clamp-2">
+                  {project.description}
+                </CardDescription>
+              )}
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>{project.pageCount} {project.pageCount === 1 ? 'page' : 'pages'}</span>
+              </div>
+            </CardContent>
+            <CardFooter className="text-sm text-muted-foreground">
+              <span>Edited {formatTimeAgo(project.updatedAt)}</span>
+            </CardFooter>
+          </Card>
+        </Link>
+      ))}
+    </div>
   )
 }

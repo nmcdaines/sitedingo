@@ -230,8 +230,6 @@ function EditorContent({ projectId }: { projectId: string }) {
   const [selectedPage, setSelectedPage] = React.useState<{ id: number; name: string; slug: string; description: string | null; sortOrder: number; parentId: number | null } | null>(null);
   const [selectedSection, setSelectedSection] = React.useState<{ id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number; pageId?: number } | null>(null);
   const [isPropertyPanelOpen, setIsPropertyPanelOpen] = React.useState(false);
-  const [canUndo, setCanUndo] = React.useState(false);
-  const [canRedo, setCanRedo] = React.useState(false);
   const [isDragging, setIsDragging] = React.useState(false);
   const [showSuccessNotification, setShowSuccessNotification] = React.useState(false);
   const prevIsGeneratingRef = React.useRef<boolean | undefined>(undefined);
@@ -375,16 +373,6 @@ function EditorContent({ projectId }: { projectId: string }) {
       )}
       <div className="flex flex-1 overflow-hidden relative">
         <EditorSidebar 
-          onUndo={() => {
-            // Undo is handled in SitemapDiagram via keyboard shortcuts
-            // This is just for the button
-          }}
-          onRedo={() => {
-            // Redo is handled in SitemapDiagram via keyboard shortcuts
-            // This is just for the button
-          }}
-          canUndo={canUndo}
-          canRedo={canRedo}
           isPropertyPanelOpen={isPropertyPanelOpen}
           onTogglePropertyPanel={handleTogglePropertyPanel}
         />
@@ -404,10 +392,6 @@ function EditorContent({ projectId }: { projectId: string }) {
               onPageSelect={handlePageSelect}
               onSectionSelect={handleSectionSelect}
               selectedPageId={selectedPage?.id}
-              onUndo={() => setCanUndo(false)}
-              onRedo={() => setCanRedo(false)}
-              canUndo={canUndo}
-              canRedo={canRedo}
               onDragStateChange={setIsDragging}
             />
             <PropertyPanel

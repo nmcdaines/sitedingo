@@ -21,10 +21,6 @@ interface SitemapDiagramProps {
   onPageSelect?: (page: Page | null) => void;
   onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number; pageId?: number } | null) => void;
   selectedPageId?: number | null;
-  onUndo?: () => void;
-  onRedo?: () => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
   onDragStateChange?: (isDragging: boolean) => void;
 }
 
@@ -170,24 +166,6 @@ export function SitemapDiagram({
     }
   }, [pan, updateTransform]);
 
-  // Handle undo/redo keyboard shortcuts
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        // Undo/redo handled by context
-      } else if (
-        (e.metaKey || e.ctrlKey) &&
-        (e.key === "y" || (e.key === "z" && e.shiftKey))
-      ) {
-        e.preventDefault();
-        // Undo/redo handled by context
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, []);
 
   // Build tree structure (no layout calculation needed for CSS Grid)
   const tree = useMemo(() => {

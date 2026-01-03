@@ -66,13 +66,11 @@ function visualReducer(state: VisualState, action: VisualAction): VisualState {
 }
 
 // ============================================================================
-// Data State Reducer (Pages and history)
+// Data State Reducer (Pages)
 // ============================================================================
 
 interface DataState {
   pages: Page[];
-  history: Page[][];
-  historyIndex: number;
 }
 
 type DataAction =
@@ -84,16 +82,10 @@ type DataAction =
   | { type: 'ROLLBACK_ADD_PAGE'; payload: { tempId: number; siblingsToShift: number[] } }
   | { type: 'DELETE_PAGE'; payload: number }
   | { type: 'MOVE_PAGE'; payload: Page[] }
-  | { type: 'MOVE_SECTION'; payload: Page[] }
-  | { type: 'ADD_TO_HISTORY'; payload: Page[] }
-  | { type: 'RESET_HISTORY'; payload: Page[] }
-  | { type: 'UNDO' }
-  | { type: 'REDO' };
+  | { type: 'MOVE_SECTION'; payload: Page[] };
 
 const initialDataState = (initialPages: Page[]): DataState => ({
   pages: initialPages,
-  history: [initialPages],
-  historyIndex: 0,
 });
 
 function dataReducer(state: DataState, action: DataAction): DataState {
@@ -161,47 +153,6 @@ function dataReducer(state: DataState, action: DataAction): DataState {
     case 'MOVE_SECTION':
       return { ...state, pages: action.payload };
     
-    case 'ADD_TO_HISTORY': {
-      const newHistory = state.history.slice(0, state.historyIndex + 1);
-      newHistory.push(action.payload);
-      return {
-        ...state,
-        pages: action.payload,
-        history: newHistory.slice(-50), // Keep last 50 states
-        historyIndex: newHistory.length - 1,
-      };
-    }
-    
-    case 'RESET_HISTORY':
-      return {
-        ...state,
-        pages: action.payload,
-        history: [action.payload],
-        historyIndex: 0,
-      };
-    
-    case 'UNDO':
-      if (state.historyIndex > 0) {
-        const previousState = state.history[state.historyIndex - 1];
-        return {
-          ...state,
-          pages: previousState,
-          historyIndex: state.historyIndex - 1,
-        };
-      }
-      return state;
-    
-    case 'REDO':
-      if (state.historyIndex < state.history.length - 1) {
-        const nextState = state.history[state.historyIndex + 1];
-        return {
-          ...state,
-          pages: nextState,
-          historyIndex: state.historyIndex + 1,
-        };
-      }
-      return state;
-    
     default:
       return state;
   }
@@ -218,8 +169,6 @@ interface SitemapDiagramContextValue {
   activeSectionId: string | null;
   showSections: boolean;
   saveStatus: 'idle' | 'saving' | 'saved' | 'error';
-  canUndo: boolean;
-  canRedo: boolean;
 
   // Actions
   setActiveId: (id: string | null) => void;
@@ -236,8 +185,6 @@ interface SitemapDiagramContextValue {
   duplicatePage: (page: Page) => Promise<void>;
   updatePage: (pageId: number, updates: { name?: string; slug?: string; description?: string | null }) => void;
   updateSection: (sectionId: number, updates: { name?: string | null; componentType?: string; metadata?: Record<string, unknown> }) => Promise<void>;
-  undo: () => void;
-  redo: () => void;
   
   // Internal state (for auto-save)
   updatePages: (updater: (pages: Page[]) => Page[]) => void;
@@ -332,7 +279,7 @@ export function SitemapDiagramProvider({
         sections: [...page.sections].sort((a, b) => a.sortOrder - b.sortOrder),
       }));
 
-      dataDispatch({ type: 'RESET_HISTORY', payload: pagesWithSortedSections });
+      dataDispatch({ type: 'SET_PAGES', payload: pagesWithSortedSections });
       previousPagesRef.current = pagesWithSortedSections;
     }
   }, [initialPages]);
@@ -708,8 +655,8 @@ export function SitemapDiagramProvider({
       return;
     }
 
-    // Add to history and update pages
-    dataDispatch({ type: 'ADD_TO_HISTORY', payload: updatedPages });
+    // Update pages
+    dataDispatch({ type: 'MOVE_PAGE', payload: updatedPages });
   }, [dataState.pages]);
 
   // Move section mutation
@@ -1062,26 +1009,12 @@ export function SitemapDiagramProvider({
     }
   }, [dataState.pages, queryClient]);
 
-  // Undo/Redo
-  const undo = useCallback(() => {
-    dataDispatch({ type: 'UNDO' });
-  }, []);
-
-  const redo = useCallback(() => {
-    dataDispatch({ type: 'REDO' });
-  }, []);
-
-  const canUndo = dataState.historyIndex > 0;
-  const canRedo = dataState.historyIndex < dataState.history.length - 1;
-
   const value: SitemapDiagramContextValue = {
     pages: dataState.pages,
     activeId: visualState.activeId,
     activeSectionId: visualState.activeSectionId,
     showSections: visualState.showSections,
     saveStatus: visualState.saveStatus,
-    canUndo,
-    canRedo,
     setActiveId: (id) => visualDispatch({ type: 'SET_ACTIVE_ID', payload: id }),
     setActiveSectionId: (id) => visualDispatch({ type: 'SET_ACTIVE_SECTION_ID', payload: id }),
     setShowSections: (show) => visualDispatch({ type: 'SET_SHOW_SECTIONS', payload: show }),
@@ -1094,8 +1027,6 @@ export function SitemapDiagramProvider({
     duplicatePage,
     updatePage,
     updateSection,
-    undo,
-    redo,
     updatePages,
   };
 

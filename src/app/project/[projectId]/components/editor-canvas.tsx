@@ -37,14 +37,10 @@ interface EditorCanvasProps {
   onPageSelect?: (page: { id: number; name: string; slug: string; description: string | null; sortOrder: number; parentId: number | null } | null) => void;
   onSectionSelect?: (section: { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number; pageId?: number } | null) => void;
   selectedPageId?: number | null;
-  onUndo?: () => void;
-  onRedo?: () => void;
-  canUndo?: boolean;
-  canRedo?: boolean;
   onDragStateChange?: (isDragging: boolean) => void;
 }
 
-export function EditorCanvas({ sitemap, zoom, onZoomChange, onSaveStatusChange, onPageSelect, onSectionSelect, selectedPageId, onUndo, onRedo, canUndo, canRedo, onDragStateChange }: EditorCanvasProps) {
+export function EditorCanvas({ sitemap, zoom, onZoomChange, onSaveStatusChange, onPageSelect, onSectionSelect, selectedPageId, onDragStateChange }: EditorCanvasProps) {
   // Handle empty sitemap gracefully (during generation)
   const pages = sitemap?.pages || [];
   
@@ -60,10 +56,6 @@ export function EditorCanvas({ sitemap, zoom, onZoomChange, onSaveStatusChange, 
           onPageSelect={onPageSelect}
           onSectionSelect={onSectionSelect}
           selectedPageId={selectedPageId}
-          onUndo={onUndo}
-          onRedo={onRedo}
-          canUndo={canUndo}
-          canRedo={canRedo}
           onDragStateChange={onDragStateChange}
         />
       ) : null}

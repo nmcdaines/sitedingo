@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { client } from "@/lib/client";
@@ -14,27 +15,31 @@ export default function Home() {
   const router = useRouter();
 
   return (
-    <form
-      onSubmit={async (e) => {
-        e.preventDefault();
-        setIsLoading(true);
-        try {
-          const formData = new FormData(e.currentTarget);
-          const project = await client.api.projects.post({
-            name: formData.get('name') as string,
-            description: formData.get('description') as string,
-            pagesCount: formData.get('pagesCount') as string,
-          });
-          if (project.data?.id) {
-            router.push(`/project/${project.data.id}`);
+    <div className="flex flex-col space-y-4 px-4 max-w-2xl">
+      <Button variant="outline" asChild>
+        <Link href="/project">View All Projects</Link>
+      </Button>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          setIsLoading(true);
+          try {
+            const formData = new FormData(e.currentTarget);
+            const project = await client.api.projects.post({
+              name: formData.get('name') as string,
+              description: formData.get('description') as string,
+              pagesCount: formData.get('pagesCount') as string,
+            });
+            if (project.data?.id) {
+              router.push(`/project/${project.data.id}`);
+            }
+          } catch (error) {
+            setIsLoading(false);
+            throw error;
           }
-        } catch (error) {
-          setIsLoading(false);
-          throw error;
-        }
-      }}
-      className="flex flex-col space-y-2 px-4 max-w-2xl"
-    >
+        }}
+        className="flex flex-col space-y-2"
+      >
       <Input type="text" name="name" placeholder="Project Name" defaultValue="Gretta" disabled={isLoading} />
       <Textarea name="description" placeholder="Project Description" defaultValue="Gretta is a boutique Architectural firm based in Los Angeles that focuses on homes as well as smaller commercial and community projects." disabled={isLoading} />
       <Select name="pagesCount" defaultValue="2-5" disabled={isLoading}>
@@ -50,6 +55,7 @@ export default function Home() {
         {isLoading && <Spinner className="mr-2" />}
         Create Project
       </Button>
-    </form>
+      </form>
+    </div>
   );
 }

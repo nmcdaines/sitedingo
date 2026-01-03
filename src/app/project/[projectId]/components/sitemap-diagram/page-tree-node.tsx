@@ -4,7 +4,8 @@ import React from 'react';
 import { TreeNode } from '../../lib/tree-utils';
 import { PageNode } from './page-node';
 import { EmptySpaceDropZone } from './empty-space-drop-zone';
-import { useSitemapDiagram, Page } from './sitemap-diagram-context';
+import { useSitemapDiagram } from './sitemap-diagram-context';
+import { Page } from './types';
 
 interface PageTreeNodeProps {
   node: TreeNode;

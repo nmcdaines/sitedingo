@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils';
 import { useDroppable, useDndContext } from '@dnd-kit/core';
 import { useMemo } from 'react';
+import { createReorderDropZoneId } from './drag/drop-zone-ids';
 
 interface EmptySpaceDropZoneProps {
   parentId: number | null;
@@ -32,11 +33,15 @@ export function EmptySpaceDropZone({
   const { active } = useDndContext();
 
   const droppableId = useMemo(() => {
+    if (type === 'page') {
+      return createReorderDropZoneId(parentId, position);
+    }
+    // For sections, use the old format for now (can be updated later)
     return [
-      type === 'page' ? 'reorder' : 'reorder-section',
+      'reorder-section',
       parentId ?? 'root',
       position
-    ].join('-')
+    ].join('-');
   }, [type, parentId, position]);
 
   const activeNode = useMemo(() => {

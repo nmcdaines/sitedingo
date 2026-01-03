@@ -1,162 +1,18 @@
 'use client';
 
-import React, { createContext, useContext, useReducer, useCallback, useRef, useEffect } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { createContext, useContext, useReducer, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { DragEndEvent } from '@dnd-kit/core';
 import { client } from '@/lib/client';
-import { getSiblings, calculateSortOrder, TreeNode } from '../../lib/tree-utils';
+import { useAutoSave } from '../../hooks/use-auto-save';
+import { Page } from './types';
+import { visualReducer, initialVisualState } from './state/visual-state';
+import { dataReducer, initialDataState } from './state/data-state';
+import { usePageMutations } from './mutations/page-mutations';
+import { useSectionMutations } from './mutations/section-mutations';
 
-export interface Page {
-  id: number;
-  name: string;
-  slug: string;
-  description: string | null;
-  icon: string | null;
-  sortOrder: number;
-  parentId: number | null;
-  sections: Array<{
-    id: number;
-    componentType: string;
-    name: string | null;
-    metadata: Record<string, unknown>;
-    sortOrder: number;
-  }>;
-}
-
-// ============================================================================
-// Visual State Reducer (UI-related state)
-// ============================================================================
-
-interface VisualState {
-  activeId: string | null;
-  activeSectionId: string | null;
-  showSections: boolean;
-  saveStatus: 'idle' | 'saving' | 'saved' | 'error';
-}
-
-type VisualAction =
-  | { type: 'SET_ACTIVE_ID'; payload: string | null }
-  | { type: 'SET_ACTIVE_SECTION_ID'; payload: string | null }
-  | { type: 'SET_SHOW_SECTIONS'; payload: boolean }
-  | { type: 'SET_SAVE_STATUS'; payload: 'idle' | 'saving' | 'saved' | 'error' }
-  | { type: 'CLEAR_ACTIVE_IDS' };
-
-const initialVisualState: VisualState = {
-  activeId: null,
-  activeSectionId: null,
-  showSections: true,
-  saveStatus: 'idle',
-};
-
-function visualReducer(state: VisualState, action: VisualAction): VisualState {
-  switch (action.type) {
-    case 'SET_ACTIVE_ID':
-      return { ...state, activeId: action.payload };
-    case 'SET_ACTIVE_SECTION_ID':
-      return { ...state, activeSectionId: action.payload };
-    case 'SET_SHOW_SECTIONS':
-      return { ...state, showSections: action.payload };
-    case 'SET_SAVE_STATUS':
-      return { ...state, saveStatus: action.payload };
-    case 'CLEAR_ACTIVE_IDS':
-      return { ...state, activeId: null, activeSectionId: null };
-    default:
-      return state;
-  }
-}
-
-// ============================================================================
-// Data State Reducer (Pages)
-// ============================================================================
-
-interface DataState {
-  pages: Page[];
-}
-
-type DataAction =
-  | { type: 'SET_PAGES'; payload: Page[] }
-  | { type: 'UPDATE_PAGES'; payload: (pages: Page[]) => Page[] }
-  | { type: 'UPDATE_PAGE'; payload: { id: number; updates: Partial<Pick<Page, 'name' | 'slug' | 'description' | 'icon'>> } }
-  | { type: 'ADD_PAGE_OPTIMISTIC'; payload: { page: Page; siblingsToShift: number[] } }
-  | { type: 'REPLACE_TEMP_PAGE'; payload: { tempId: number; actualPage: Page } }
-  | { type: 'ROLLBACK_ADD_PAGE'; payload: { tempId: number; siblingsToShift: number[] } }
-  | { type: 'DELETE_PAGE'; payload: number }
-  | { type: 'MOVE_PAGE'; payload: Page[] }
-  | { type: 'MOVE_SECTION'; payload: Page[] };
-
-const initialDataState = (initialPages: Page[]): DataState => ({
-  pages: initialPages,
-});
-
-function dataReducer(state: DataState, action: DataAction): DataState {
-  switch (action.type) {
-    case 'SET_PAGES':
-      return { ...state, pages: action.payload };
-    
-    case 'UPDATE_PAGES':
-      return { ...state, pages: action.payload(state.pages) };
-    
-    case 'UPDATE_PAGE': {
-      const { id, updates } = action.payload;
-      return {
-        ...state,
-        pages: state.pages.map((p) =>
-          p.id === id ? { ...p, ...updates } : p
-        ),
-      };
-    }
-    
-    case 'ADD_PAGE_OPTIMISTIC': {
-      const { page, siblingsToShift } = action.payload;
-      const updatedPages = state.pages.map((p) => {
-        if (siblingsToShift.includes(p.id)) {
-          return { ...p, sortOrder: p.sortOrder + 1 };
-        }
-        return p;
-      });
-      updatedPages.push(page);
-      return { ...state, pages: updatedPages };
-    }
-    
-    case 'REPLACE_TEMP_PAGE': {
-      const { tempId, actualPage } = action.payload;
-      return {
-        ...state,
-        pages: state.pages.map((p) =>
-          p.id === tempId ? actualPage : p
-        ),
-      };
-    }
-    
-    case 'ROLLBACK_ADD_PAGE': {
-      const { tempId, siblingsToShift } = action.payload;
-      return {
-        ...state,
-        pages: state.pages
-          .filter((p) => p.id !== tempId)
-          .map((p) => {
-            if (siblingsToShift.includes(p.id)) {
-              return { ...p, sortOrder: p.sortOrder - 1 };
-            }
-            return p;
-          }),
-      };
-    }
-    
-    case 'DELETE_PAGE':
-      return {
-        ...state,
-        pages: state.pages.filter((p) => p.id !== action.payload),
-      };
-    
-    case 'MOVE_PAGE':
-    case 'MOVE_SECTION':
-      return { ...state, pages: action.payload };
-    
-    default:
-      return state;
-  }
-}
+// Re-export Page type for backward compatibility
+export type { Page } from './types';
 
 // ============================================================================
 // Context
@@ -221,10 +77,8 @@ export function SitemapDiagramProvider({
   const [visualState, visualDispatch] = useReducer(visualReducer, initialVisualState);
   const [dataState, dataDispatch] = useReducer(dataReducer, initialPages, initialDataState);
   
-  // Refs for auto-save
+  // Refs for tracking initial pages from server
   const previousPagesRef = useRef<Page[]>(initialPages);
-  const isInitialMountRef = useRef(true);
-  const isSavingRef = useRef(false);
 
   // Update pages when prop changes (from server)
   useEffect(() => {
@@ -300,41 +154,37 @@ export function SitemapDiagramProvider({
     dataDispatch({ type: 'UPDATE_PAGE', payload: { id: pageId, updates } });
   }, []);
 
-  // Auto-save mutation
-  const savePageMutation = useMutation({
-    mutationFn: async (page: {
-      id: number;
-      parentId: number | null;
-      sortOrder: number;
-    }) => {
-      const pageData = dataState.pages.find((p) => p.id === page.id);
-      if (!pageData) throw new Error('Page not found');
-
-      return await client.api.pages({ id: page.id.toString() }).put({
-        name: pageData.name,
-        slug: pageData.slug,
-        description: pageData.description,
-        icon: pageData.icon,
-        parentId: pageData.parentId,
-        sortOrder: pageData.sortOrder,
-      });
-    },
+  // Use extracted mutation hooks
+  const { addPage, movePage, deletePage, duplicatePage } = usePageMutations({
+    pages: dataState.pages,
+    sitemapId,
+    dataDispatch,
+    previousPagesRef,
+    onPageSelect,
   });
 
-  // Auto-save when pages change
-  useEffect(() => {
-    if (isInitialMountRef.current) {
-      isInitialMountRef.current = false;
-      previousPagesRef.current = dataState.pages;
-      return;
-    }
+  const { addSection, moveSection, updateSection } = useSectionMutations({
+    pages: dataState.pages,
+    dataDispatch,
+    previousPagesRef,
+    setSaveStatus,
+  });
 
-    const changedPages = dataState.pages.filter((page) => {
-      const originalPage = previousPagesRef.current.find(
-        (p) => p.id === page.id,
-      );
+  // Extract structural data (parentId, sortOrder) for auto-save comparison
+  const structuralData = useMemo(() => {
+    return dataState.pages.map((page) => ({
+      id: page.id,
+      parentId: page.parentId,
+      sortOrder: page.sortOrder,
+    }));
+  }, [dataState.pages]);
+
+  // Auto-save function for structural changes
+  const saveStructuralChanges = useCallback(async (structuralPages: typeof structuralData) => {
+    // Find pages that have structural changes
+    const changedPages = structuralPages.filter((page) => {
+      const originalPage = previousPagesRef.current.find((p) => p.id === page.id);
       if (!originalPage) return false;
-
       return (
         page.parentId !== originalPage.parentId ||
         page.sortOrder !== originalPage.sortOrder
@@ -346,669 +196,66 @@ export function SitemapDiagramProvider({
       return;
     }
 
-    if (isSavingRef.current) {
-      return;
-    }
+    // Save all changed pages
+    await Promise.all(
+      changedPages.map(async (page) => {
+        const pageData = dataState.pages.find((p) => p.id === page.id);
+        if (!pageData) throw new Error(`Page not found: ${page.id}`);
 
-    (async () => {
-      isSavingRef.current = true;
+        return await client.api.pages({ id: page.id.toString() }).put({
+          name: pageData.name,
+          slug: pageData.slug,
+          description: pageData.description,
+          icon: pageData.icon,
+          parentId: pageData.parentId,
+          sortOrder: pageData.sortOrder,
+        });
+      }),
+    );
 
-      const stillChanged = dataState.pages.filter((page) => {
-        const originalPage = previousPagesRef.current.find(
-          (p) => p.id === page.id,
-        );
-        if (!originalPage) return false;
+    queryClient.invalidateQueries({ queryKey: ['projects'] });
+    previousPagesRef.current = dataState.pages;
+  }, [dataState.pages, queryClient]);
 
-        return (
-          page.parentId !== originalPage.parentId ||
-          page.sortOrder !== originalPage.sortOrder
-        );
-      });
-
-      if (stillChanged.length === 0) {
-        previousPagesRef.current = dataState.pages;
-        isSavingRef.current = false;
-        return;
-      }
-
-      setSaveStatus('saving');
-
-      try {
-        await Promise.all(
-          stillChanged.map((page) => {
-            const pageData = dataState.pages.find((p) => p.id === page.id)!;
-            return savePageMutation.mutateAsync({
-              id: page.id,
-              parentId: pageData.parentId,
-              sortOrder: pageData.sortOrder,
-            });
-          }),
-        );
-
-        queryClient.invalidateQueries({ queryKey: ['projects'] });
-        previousPagesRef.current = dataState.pages;
-
+  // Use auto-save hook for structural changes
+  const autoSaveStatus = useAutoSave(
+    structuralData,
+    saveStructuralChanges,
+    {
+      debounceMs: 500,
+      onSave: () => {
         setSaveStatus('saved');
         setTimeout(() => {
           setSaveStatus('idle');
         }, 2000);
-      } catch {
+      },
+      onError: () => {
         setSaveStatus('error');
         setTimeout(() => {
           setSaveStatus('idle');
         }, 5000);
-      } finally {
-        isSavingRef.current = false;
-      }
-    })();
-  }, [dataState.pages, savePageMutation, queryClient, setSaveStatus]);
-
-  // Add page mutation
-  const addPage = useCallback(async (parentId: number | null, position: number) => {
-    if (!sitemapId) return;
-
-    const siblings = dataState.pages
-      .filter((p) => p.parentId === parentId)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
-
-    const validPosition = Math.max(0, Math.min(position, siblings.length));
-    const siblingsToShift = siblings.filter(
-      (s) => s.sortOrder >= validPosition,
-    );
-
-    // Generate temporary ID for optimistic update
-    const tempId = -Date.now();
-    const tempSlug = `new-page-${Date.now()}`;
-    
-    // Determine if this is a home page (root level with no parent, or slug === '/')
-    // For now, we'll check the name since we don't know the final slug yet
-    // The API will handle slug === '/' check
-    const isHomePage = parentId === null && dataState.pages.filter(p => p.parentId === null).length === 0;
-
-    const optimisticPage: Page = {
-      id: tempId,
-      name: 'New Page',
-      slug: tempSlug,
-      description: null,
-      icon: isHomePage ? 'home' : null,
-      sortOrder: validPosition,
-      parentId: parentId,
-      sections: [],
-    };
-
-    // Optimistic update
-    dataDispatch({
-      type: 'ADD_PAGE_OPTIMISTIC',
-      payload: {
-        page: optimisticPage,
-        siblingsToShift: siblingsToShift.map((s) => s.id),
       },
-    });
-
-    try {
-      // Determine if this is a home page - check if it's the root page (no parent and no other root pages)
-      // Also check if the name suggests it's a home page
-      const rootPages = dataState.pages.filter(p => p.parentId === null);
-      const isHomePage = parentId === null && rootPages.length === 0;
-      const defaultIcon = isHomePage ? 'home' : null;
-
-      // Create the new page via API
-      const newPage = await client.api.pages.post({
-        sitemapId: sitemapId,
-        parentId: parentId,
-        name: 'New Page',
-        slug: tempSlug,
-        description: null,
-        icon: defaultIcon,
-        sortOrder: validPosition,
-      });
-
-      // Shift all affected siblings
-      await Promise.all(
-        siblingsToShift.map((sibling) =>
-          client.api.pages({ id: sibling.id.toString() }).put({
-            name: sibling.name,
-            slug: sibling.slug,
-            description: sibling.description,
-            icon: sibling.icon,
-            parentId: sibling.parentId,
-            sortOrder: sibling.sortOrder + 1,
-          }),
-        ),
-      );
-
-      // Replace optimistic page with real page
-      const actualPage = ('data' in newPage && newPage.data) ? newPage.data : (newPage as unknown as Page);
-
-      dataDispatch({
-        type: 'REPLACE_TEMP_PAGE',
-        payload: {
-          tempId,
-          actualPage: {
-            id: actualPage.id,
-            name: actualPage.name,
-            slug: actualPage.slug,
-            description: actualPage.description,
-            icon: actualPage.icon,
-            sortOrder: actualPage.sortOrder,
-            parentId: actualPage.parentId,
-            sections: [],
-          },
-        },
-      });
-
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-    } catch (error) {
-      console.error('Failed to create page:', error);
-      
-      // Rollback optimistic update
-      dataDispatch({
-        type: 'ROLLBACK_ADD_PAGE',
-        payload: {
-          tempId,
-          siblingsToShift: siblingsToShift.map((s) => s.id),
-        },
-      });
-
-      alert('Failed to create page. Please try again.');
     }
-  }, [sitemapId, dataState.pages, queryClient]);
+  );
 
-  // Move page mutation
-  const movePage = useCallback(async (event: DragEndEvent) => {
-    const { active, over } = event;
+  // Sync save status from auto-save hook
+  useEffect(() => {
+    if (autoSaveStatus === 'saving') {
+      setSaveStatus('saving');
+    }
+  }, [autoSaveStatus, setSaveStatus]);
+
+  // Wrapper for movePage to clear active ID
+  const handleMovePage = useCallback(async (event: DragEndEvent) => {
     visualDispatch({ type: 'SET_ACTIVE_ID', payload: null });
+    await movePage(event);
+  }, [movePage, visualDispatch]);
 
-    if (!over) {
-      return;
-    }
-
-    const activeData = active.data.current;
-    if (!activeData || activeData.type !== 'page') {
-      return;
-    }
-
-    const draggedNode = activeData.node as TreeNode;
-    const overId = over.id as string;
-
-    let updatedPages: Page[] = dataState.pages;
-
-    // Case 1: Dropped on a page node (nesting)
-    let newParentId: number | null = null;
-    if (overId.startsWith('drop-page-')) {
-      newParentId = parseInt(overId.replace('drop-page-', ''));
-    } else if (overId.startsWith('page-')) {
-      newParentId = parseInt(overId.replace('page-', ''));
-    }
-
-    if (newParentId !== null) {
-      if (draggedNode.id === newParentId) {
-        return;
-      }
-
-      function isDescendant(node: TreeNode, targetId: number): boolean {
-        if (node.id === targetId) return true;
-        return node.children?.some((child) => isDescendant(child, targetId)) || false;
-      }
-      if (isDescendant(draggedNode, newParentId)) {
-        return;
-      }
-
-      const newSiblings = getSiblings(dataState.pages, newParentId, draggedNode.id);
-      const newSortOrder =
-        newSiblings.length > 0
-          ? Math.max(...newSiblings.map((s) => s.sortOrder)) + 1
-          : 0;
-
-      updatedPages = dataState.pages.map((page) => {
-        if (page.id === draggedNode.id) {
-          return { ...page, parentId: newParentId, sortOrder: newSortOrder };
-        }
-        return page;
-      });
-    }
-    // Case 2: Dropped on an empty space drop zone (re-ordering)
-    else if (overId.startsWith('reorder-')) {
-      // Validate that the drop zone expects pages
-      const overData = over.data.current;
-      if (overData && (overData as { expectedType?: string }).expectedType !== 'page') {
-        return;
-      }
-
-      const match = overId.match(/^reorder-(root|\d+)-(\d+)$/);
-      if (!match) {
-        return;
-      }
-
-      const parentIdStr = match[1];
-      const position = parseInt(match[2]);
-      const targetParentId =
-        parentIdStr === 'root' ? null : parseInt(parentIdStr);
-
-      const draggedPage = dataState.pages.find((p) => p.id === draggedNode.id);
-      if (!draggedPage) {
-        return;
-      }
-
-      if (targetParentId !== null && targetParentId === draggedNode.id) {
-        return;
-      }
-
-      if (draggedPage.parentId === targetParentId) {
-        const currentSiblings = getSiblings(
-          dataState.pages,
-          targetParentId,
-          draggedNode.id,
-        );
-        const currentIndex = currentSiblings.findIndex(
-          (s) => s.sortOrder > draggedPage.sortOrder,
-        );
-        const effectiveCurrentIndex =
-          currentIndex === -1 ? currentSiblings.length : currentIndex;
-
-        if (effectiveCurrentIndex === position) {
-          return;
-        }
-      }
-
-      const { sortOrder, siblingIds } = calculateSortOrder(
-        dataState.pages,
-        draggedNode.id,
-        targetParentId,
-        position,
-      );
-
-      const oldParentId = draggedPage.parentId;
-      const oldSiblings = getSiblings(dataState.pages, oldParentId, draggedNode.id);
-      const oldSiblingIds = oldSiblings.map((s) => s.id);
-
-      updatedPages = dataState.pages.map((page) => {
-        if (page.id === draggedNode.id) {
-          return { ...page, parentId: targetParentId, sortOrder };
-        } else if (siblingIds.includes(page.id)) {
-          const newIndex = siblingIds.indexOf(page.id);
-          return { ...page, sortOrder: newIndex };
-        } else if (
-          oldSiblingIds.includes(page.id) &&
-          oldParentId !== targetParentId
-        ) {
-          const oldIndex = oldSiblingIds.indexOf(page.id);
-          return { ...page, sortOrder: oldIndex };
-        }
-        return page;
-      });
-    } else {
-      return;
-    }
-
-    const hasChanges =
-      updatedPages.some((page) => {
-        const original = dataState.pages.find((p) => p.id === page.id);
-        if (!original) return true;
-        return (
-          page.parentId !== original.parentId ||
-          page.sortOrder !== original.sortOrder
-        );
-      }) || updatedPages.length !== dataState.pages.length;
-
-    if (!hasChanges) {
-      return;
-    }
-
-    // Update pages
-    dataDispatch({ type: 'MOVE_PAGE', payload: updatedPages });
-  }, [dataState.pages]);
-
-  // Move section mutation
-  const moveSection = useCallback(async (event: DragEndEvent) => {
-    const { active, over } = event;
+  // Wrapper for moveSection to clear active IDs
+  const handleMoveSection = useCallback(async (event: DragEndEvent) => {
     visualDispatch({ type: 'CLEAR_ACTIVE_IDS' });
-
-    if (!over) {
-      return;
-    }
-
-    const activeData = active.data.current;
-    if (!activeData || activeData.type !== 'section') {
-      return;
-    }
-
-    const draggedSection = activeData.section as {
-      id: number;
-      componentType: string;
-      name: string | null;
-      metadata: Record<string, unknown>;
-      sortOrder: number;
-    };
-    const sourcePageId = activeData.pageId as number;
-    const overId = over.id as string;
-
-    let targetPageId: number;
-    let targetPosition: number;
-
-    if (overId.startsWith('section-drop-')) {
-      // Validate that the drop zone expects sections
-      const overData = over.data.current;
-      if (overData && (overData as { expectedType?: string }).expectedType !== 'section') {
-        return;
-      }
-
-      const match = overId.match(/^section-drop-(\d+)-(\d+)$/);
-      if (!match) {
-        return;
-      }
-
-      targetPageId = parseInt(match[1]);
-      targetPosition = parseInt(match[2]);
-    } else if (overId.startsWith('drop-section-page-')) {
-      // Validate that the drop zone expects sections
-      const overData = over.data.current;
-      if (overData && (overData as { expectedType?: string }).expectedType !== 'section') {
-        return;
-      }
-
-      const match = overId.match(/^drop-section-page-(\d+)$/);
-      if (!match) {
-        return;
-      }
-
-      targetPageId = parseInt(match[1]);
-      const targetPageForLength = dataState.pages.find((p) => p.id === targetPageId);
-      if (!targetPageForLength) {
-        return;
-      }
-      targetPosition = targetPageForLength.sections.length;
-    } else {
-      return;
-    }
-
-    const targetPage = dataState.pages.find((p) => p.id === targetPageId);
-    const sourcePage = dataState.pages.find((p) => p.id === sourcePageId);
-
-    if (!targetPage) {
-      return;
-    }
-
-    const isSamePage = sourcePageId === targetPageId;
-
-    if (isSamePage) {
-      const currentSections = [...targetPage.sections].sort(
-        (a, b) => a.sortOrder - b.sortOrder,
-      );
-      const currentIndex = currentSections.findIndex(
-        (s) => s.id === draggedSection.id,
-      );
-      if (
-        currentIndex === targetPosition ||
-        (currentIndex === targetPosition - 1 &&
-          targetPosition === currentSections.length)
-      ) {
-        return;
-      }
-    }
-
-    const originalPages = [...dataState.pages];
-
-    setSaveStatus('saving');
-
-    try {
-      const targetSections = [...targetPage.sections].sort(
-        (a, b) => a.sortOrder - b.sortOrder,
-      );
-      const sectionsToReorder = isSamePage
-        ? targetSections.filter((s) => s.id !== draggedSection.id)
-        : targetSections;
-
-      const newTargetSections = [...sectionsToReorder];
-      newTargetSections.splice(targetPosition, 0, {
-        ...draggedSection,
-        sortOrder: targetPosition,
-      });
-
-      const updatedTargetSections = newTargetSections.map((section, index) => ({
-        ...section,
-        sortOrder: index,
-      }));
-
-      const updatedPages = dataState.pages.map((page) => {
-        if (page.id === targetPageId) {
-          return {
-            ...page,
-            sections: updatedTargetSections,
-          };
-        } else if (!isSamePage && page.id === sourcePageId && sourcePage) {
-          const remainingSections = sourcePage.sections
-            .filter((s) => s.id !== draggedSection.id)
-            .sort((a, b) => a.sortOrder - b.sortOrder)
-            .map((section, index) => ({
-              ...section,
-              sortOrder: index,
-            }));
-
-          return {
-            ...page,
-            sections: remainingSections,
-          };
-        }
-        return page;
-      });
-
-      dataDispatch({ type: 'MOVE_SECTION', payload: updatedPages });
-
-      const targetUpdates = updatedTargetSections.map((section) => {
-        return client.api.sections({ id: section.id.toString() }).put({
-          componentType: section.componentType,
-          name: section.name,
-          metadata: section.metadata,
-          sortOrder: section.sortOrder,
-          pageId: targetPageId,
-        });
-      });
-
-      await Promise.all(targetUpdates);
-
-      if (!isSamePage && sourcePage) {
-        const remainingSections = sourcePage.sections
-          .filter((s) => s.id !== draggedSection.id)
-          .sort((a, b) => a.sortOrder - b.sortOrder);
-
-        const sourceUpdates = remainingSections.map((section, index) =>
-          client.api.sections({ id: section.id.toString() }).put({
-            componentType: section.componentType,
-            name: section.name,
-            metadata: section.metadata,
-            sortOrder: index,
-            pageId: sourcePageId,
-          }),
-        );
-
-        await Promise.all(sourceUpdates);
-      }
-
-      previousPagesRef.current = updatedPages;
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-
-      setSaveStatus('saved');
-      setTimeout(() => {
-        setSaveStatus('idle');
-      }, 2000);
-    } catch (error) {
-      console.error('Failed to move section:', error);
-      dataDispatch({ type: 'SET_PAGES', payload: originalPages });
-      previousPagesRef.current = originalPages;
-
-      setSaveStatus('error');
-      setTimeout(() => {
-        setSaveStatus('idle');
-      }, 5000);
-    }
-  }, [dataState.pages, queryClient, setSaveStatus]);
-
-  // Delete page mutation
-  const deletePage = useCallback(async (pageId: number) => {
-    try {
-      await client.api.pages({ id: pageId.toString() }).delete();
-      dataDispatch({ type: 'DELETE_PAGE', payload: pageId });
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      onPageSelect?.(null);
-    } catch (error) {
-      console.error('Failed to delete page:', error);
-    }
-  }, [queryClient, onPageSelect]);
-
-  // Duplicate page mutation
-  const duplicatePage = useCallback(async (page: Page) => {
-    if (!sitemapId) return;
-
-    try {
-      await client.api.pages.post({
-        sitemapId: sitemapId,
-        parentId: page.parentId,
-        name: `${page.name} (Copy)`,
-        slug: `${page.slug}-copy`,
-        description: page.description,
-        icon: page.icon,
-        sortOrder: page.sortOrder + 1,
-      });
-
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-      // Note: The page will be refetched from the server, so we don't need to update local state
-    } catch (error) {
-      console.error('Failed to duplicate page:', error);
-    }
-  }, [sitemapId, queryClient]);
-
-  // Add section mutation
-  const addSection = useCallback(async (pageId: number, position?: number) => {
-    const page = dataState.pages.find((p) => p.id === pageId);
-    if (!page) {
-      console.error('Page not found:', pageId);
-      return;
-    }
-
-    const sections = [...page.sections].sort((a, b) => a.sortOrder - b.sortOrder);
-    const targetPosition = position !== undefined ? position : sections.length;
-
-    try {
-      const newSection = await client.api.sections.post({
-        pageId: pageId,
-        componentType: 'hero',
-        name: 'New Section',
-        metadata: {},
-        sortOrder: targetPosition,
-      });
-
-      const actualSection = ('data' in newSection && newSection.data) ? newSection.data : (newSection as unknown as { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number });
-
-      // Update local state optimistically
-      const updatedPages = dataState.pages.map((p) => {
-        if (p.id === pageId) {
-          const updatedSections = [...sections];
-          updatedSections.splice(targetPosition, 0, {
-            id: actualSection.id,
-            componentType: actualSection.componentType,
-            name: actualSection.name,
-            metadata: actualSection.metadata,
-            sortOrder: targetPosition,
-          });
-          // Reorder all sections to have correct sortOrder
-          const reorderedSections = updatedSections.map((s, idx) => ({
-            ...s,
-            sortOrder: idx,
-          }));
-
-          return {
-            ...p,
-            sections: reorderedSections,
-          };
-        }
-        return p;
-      });
-
-      dataDispatch({ type: 'SET_PAGES', payload: updatedPages });
-
-      // Update sort orders for sections that were shifted
-      const sectionsToUpdate = sections.slice(targetPosition);
-      if (sectionsToUpdate.length > 0) {
-        await Promise.all(
-          sectionsToUpdate.map((section, idx) =>
-            client.api.sections({ id: section.id.toString() }).put({
-              componentType: section.componentType,
-              name: section.name,
-              metadata: section.metadata,
-              sortOrder: targetPosition + 1 + idx,
-              pageId: pageId,
-            }),
-          ),
-        );
-      }
-
-      previousPagesRef.current = updatedPages;
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-    } catch (error) {
-      console.error('Failed to create section:', error);
-      alert('Failed to create section. Please try again.');
-    }
-  }, [dataState.pages, queryClient]);
-
-  // Update section mutation
-  const updateSection = useCallback(async (
-    sectionId: number,
-    updates: { name?: string | null; componentType?: string; metadata?: Record<string, unknown> }
-  ) => {
-    try {
-      const page = dataState.pages.find((p) =>
-        p.sections.some((s) => s.id === sectionId),
-      );
-      if (!page) {
-        console.error('Page not found for section:', sectionId);
-        return;
-      }
-
-      const section = page.sections.find((s) => s.id === sectionId);
-      if (!section) {
-        console.error('Section not found:', sectionId);
-        return;
-      }
-
-      const updatedSection = await client.api.sections({ id: sectionId.toString() }).put({
-        componentType: updates.componentType ?? section.componentType,
-        name: updates.name ?? section.name,
-        metadata: updates.metadata ?? section.metadata,
-        sortOrder: section.sortOrder,
-        pageId: page.id,
-      });
-
-      const actualSection = ('data' in updatedSection && updatedSection.data) ? updatedSection.data : (updatedSection as unknown as { id: number; componentType: string; name: string | null; metadata: Record<string, unknown>; sortOrder: number });
-
-      // Update local state
-      const updatedPages = dataState.pages.map((p) => {
-        if (p.id === page.id) {
-          return {
-            ...p,
-            sections: p.sections.map((s) =>
-              s.id === sectionId
-                ? {
-                    ...s,
-                    name: actualSection.name,
-                    componentType: actualSection.componentType,
-                    metadata: actualSection.metadata,
-                  }
-                : s,
-            ),
-          };
-        }
-        return p;
-      });
-
-      dataDispatch({ type: 'SET_PAGES', payload: updatedPages });
-      previousPagesRef.current = updatedPages;
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
-    } catch (error) {
-      console.error('Failed to update section:', error);
-      alert('Failed to update section. Please try again.');
-    }
-  }, [dataState.pages, queryClient]);
+    await moveSection(event);
+  }, [moveSection, visualDispatch]);
 
   const value: SitemapDiagramContextValue = {
     pages: dataState.pages,
@@ -1022,8 +269,8 @@ export function SitemapDiagramProvider({
     setSaveStatus,
     addPage,
     addSection,
-    movePage,
-    moveSection,
+    movePage: handleMovePage,
+    moveSection: handleMoveSection,
     deletePage,
     duplicatePage,
     updatePage,

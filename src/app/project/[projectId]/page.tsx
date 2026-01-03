@@ -10,6 +10,7 @@ import { EditorFooter } from "./components/editor-footer";
 import { PropertyPanel } from "./components/property-panel";
 import { Spinner } from "@/components/ui/spinner";
 import { SitemapDiagramProvider } from "./components/sitemap-diagram/sitemap-diagram-context";
+import { SitemapErrorBoundary } from "./components/sitemap-diagram/components/sitemap-error-boundary";
 
 interface ProjectData {
   id: number;
@@ -384,17 +385,19 @@ function EditorContent({ projectId }: { projectId: string }) {
             onSaveStatusChange={setSaveStatus}
             onPageSelect={handlePageSelect}
           >
-            <EditorCanvas 
-              project={{ ...project, sitemaps: project.sitemaps || [] }} 
-              sitemap={sitemap} 
-              zoom={zoom} 
-              onZoomChange={setZoom}
-              onSaveStatusChange={setSaveStatus}
-              onPageSelect={handlePageSelect}
-              onSectionSelect={handleSectionSelect}
-              selectedPageId={selectedPage?.id}
-              onDragStateChange={setIsDragging}
-            />
+            <SitemapErrorBoundary>
+              <EditorCanvas 
+                project={{ ...project, sitemaps: project.sitemaps || [] }} 
+                sitemap={sitemap} 
+                zoom={zoom} 
+                onZoomChange={setZoom}
+                onSaveStatusChange={setSaveStatus}
+                onPageSelect={handlePageSelect}
+                onSectionSelect={handleSectionSelect}
+                selectedPageId={selectedPage?.id}
+                onDragStateChange={setIsDragging}
+              />
+            </SitemapErrorBoundary>
             <PropertyPanel
               page={selectedPage}
               project={project}

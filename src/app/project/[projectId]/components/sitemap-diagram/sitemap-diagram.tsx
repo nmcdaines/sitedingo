@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback, useRef, useEffect } from "react";
 import { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { Eye, EyeOff } from "lucide-react";
 import {
@@ -10,7 +10,9 @@ import { PageTreeNode } from "./page-tree-node";
 import { DragContext } from "./drag-context";
 import { EmptySpaceDropZone } from "./empty-space-drop-zone";
 import { Button } from "@/components/ui/button";
-import { useSitemapDiagram, Page } from "./sitemap-diagram-context";
+import { useSitemapDiagram } from "./sitemap-diagram-context";
+import { Page } from "./types";
+import { usePanZoom } from "./hooks/use-pan-zoom";
 
 interface SitemapDiagramProps {
   pages: Page[];
@@ -50,121 +52,36 @@ export function SitemapDiagram({
   const [selectedNodeId, setSelectedNodeId] = useState<number | null>(
     selectedPageId ?? null,
   );
-  const [internalZoom, setInternalZoom] = useState(0.7);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isPanning, setIsPanning] = useState(false);
-  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [mouseDownOnEmptySpace, setMouseDownOnEmptySpace] = useState(false);
-  const mouseDownWasOnEmptySpaceRef = React.useRef(false);
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const contentRef = React.useRef<HTMLDivElement>(null);
-  const transformRef = React.useRef<HTMLDivElement>(null);
-  const zoomRef = React.useRef(externalZoom ?? internalZoom);
-  const panRef = React.useRef({ x: 0, y: 0 });
-  const hasCenteredRef = React.useRef(false);
-  const rafIdRef = React.useRef<number | null>(null);
-  const pendingPanRef = React.useRef<{ x: number; y: number } | null>(null);
-  const isScrollingRef = React.useRef(false);
-  const scrollTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-  const accumulatedPanDeltaRef = React.useRef({ x: 0, y: 0 });
+  const mouseDownWasOnEmptySpaceRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const hasCenteredRef = useRef(false);
 
-  const zoom = externalZoom ?? internalZoom;
-  const setZoom = onZoomChange ?? setInternalZoom;
-
-  // Function to update transform directly via DOM (for smooth scrolling)
-  const updateTransform = React.useCallback(
-    (
-      newPan: { x: number; y: number },
-      newZoom?: number,
-      skipStateUpdate = false,
-    ) => {
-      const transformEl = transformRef.current;
-      if (!transformEl) return;
-
-      const currentZoom = newZoom ?? zoomRef.current;
-      transformEl.style.transform = `translate(${-newPan.x}px, ${-newPan.y}px) scale(${currentZoom})`;
-      panRef.current = newPan;
-
-      // Only update React state if not actively scrolling
-      if (!skipStateUpdate && !isScrollingRef.current) {
-        setPan(newPan);
-      }
-    },
-    [],
-  );
-
-  // Sync state when scrolling stops (debounced)
-  const scheduleStateSync = React.useCallback(() => {
-    // Clear existing timeout
-    if (scrollTimeoutRef.current) {
-      clearTimeout(scrollTimeoutRef.current);
-    }
-
-    // Mark as scrolling
-    isScrollingRef.current = true;
-
-    // Debounce state sync until scrolling stops
-    scrollTimeoutRef.current = setTimeout(() => {
-      isScrollingRef.current = false;
-      if (pendingPanRef.current) {
-        setPan(pendingPanRef.current);
-        pendingPanRef.current = null;
-      }
-      scrollTimeoutRef.current = null;
-    }, 150); // 150ms after last scroll event
-  }, []);
-
-  // Apply accumulated pan delta via RAF (batched for smooth scrolling)
-  const applyPanUpdate = React.useCallback(() => {
-    if (
-      accumulatedPanDeltaRef.current.x === 0 &&
-      accumulatedPanDeltaRef.current.y === 0
-    ) {
-      rafIdRef.current = null;
-      return;
-    }
-
-    const currentPan = panRef.current;
-    const newPan = {
-      x: currentPan.x + accumulatedPanDeltaRef.current.x,
-      y: currentPan.y + accumulatedPanDeltaRef.current.y,
-    };
-
-    // Reset accumulated delta
-    accumulatedPanDeltaRef.current = { x: 0, y: 0 };
-
-    // Update transform directly (skip React state update during scrolling)
-    updateTransform(newPan, undefined, true);
-
-    // Schedule state sync when scrolling stops
-    pendingPanRef.current = newPan;
-    scheduleStateSync();
-
-    rafIdRef.current = null;
-  }, [updateTransform, scheduleStateSync]);
-
-  // Schedule pan update via RAF
-  const schedulePanUpdate = React.useCallback(() => {
-    if (rafIdRef.current === null) {
-      rafIdRef.current = requestAnimationFrame(applyPanUpdate);
-    }
-  }, [applyPanUpdate]);
-
-  // Keep refs in sync with state
-  React.useEffect(() => {
-    zoomRef.current = zoom;
-    // Sync zoom to transform
-    updateTransform(panRef.current, zoom);
-  }, [zoom, updateTransform]);
-
-  React.useEffect(() => {
-    // Only sync if not actively scrolling (to avoid conflicts with wheel handler)
-    if (!isScrollingRef.current) {
-      panRef.current = pan;
-      // Sync pan state to DOM transform (for non-scroll updates like mouse panning)
-      updateTransform(pan, undefined, false);
-    }
-  }, [pan, updateTransform]);
+  // Use pan/zoom hook
+  const {
+    zoom,
+    setZoom,
+    pan,
+    setPan,
+    isPanning,
+    setIsPanning,
+    panStart,
+    setPanStart,
+    transformRef,
+    zoomRef,
+    panRef,
+    updateTransform,
+    rafIdRef,
+    isScrollingRef,
+    scrollTimeoutRef,
+    accumulatedPanDeltaRef,
+    schedulePanUpdate,
+  } = usePanZoom({
+    initialZoom: 0.7,
+    externalZoom,
+    onZoomChange,
+  });
 
 
   // Build tree structure (no layout calculation needed for CSS Grid)
@@ -173,7 +90,7 @@ export function SitemapDiagram({
   }, [localPages]);
 
   // Center sitemap on first load
-  React.useEffect(() => {
+  useEffect(() => {
     if (
       hasCenteredRef.current ||
       !containerRef.current ||
@@ -251,7 +168,7 @@ export function SitemapDiagram({
   }, [tree.length, zoom, localPages.length]);
 
   // Prevent text selection during panning
-  React.useEffect(() => {
+  useEffect(() => {
     if (!isPanning) return;
 
     const preventSelection = (e: Event) => {
@@ -269,7 +186,7 @@ export function SitemapDiagram({
   }, [isPanning]);
 
   // Use native event listener for better control over preventDefault
-  React.useEffect(() => {
+  useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
@@ -313,21 +230,8 @@ export function SitemapDiagram({
       container.removeEventListener("wheel", handleWheelNative, {
         capture: true,
       });
-      // Cancel any pending RAF
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
-      }
-      // Clear scroll timeout
-      if (scrollTimeoutRef.current) {
-        clearTimeout(scrollTimeoutRef.current);
-        scrollTimeoutRef.current = null;
-      }
-      // Reset scrolling state
-      isScrollingRef.current = false;
-      accumulatedPanDeltaRef.current = { x: 0, y: 0 };
     };
-  }, [setZoom, schedulePanUpdate]);
+  }, [setZoom, schedulePanUpdate, zoomRef, accumulatedPanDeltaRef]);
 
   // Early return after all hooks
   if (pages.length === 0) {
